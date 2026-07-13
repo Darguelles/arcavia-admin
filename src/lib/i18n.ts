@@ -1,0 +1,169 @@
+// Admin UI language strings (es default per spec §3)
+// All labels and messages the admin operator sees are in Spanish.
+
+export const t = {
+  // Navigation
+  dashboard: 'Panel',
+  cities: 'Ciudades',
+  campaigns: 'Campañas',
+  missions: 'Misiones',
+  users: 'Usuarios',
+  settings: 'Configuración',
+  logout: 'Cerrar sesión',
+
+  // Common actions
+  save: 'Guardar',
+  cancel: 'Cancelar',
+  create: 'Crear',
+  edit: 'Editar',
+  delete: 'Eliminar',
+  deactivate: 'Desactivar',
+  activate: 'Activar',
+  confirm: 'Confirmar',
+  search: 'Buscar',
+  loading: 'Cargando…',
+  back: 'Volver',
+  add: 'Agregar',
+  remove: 'Eliminar',
+  generate: 'Generar',
+  download: 'Descargar',
+  copy: 'Copiar',
+  close: 'Cerrar',
+
+  // Status
+  active: 'Activo',
+  inactive: 'Inactivo',
+
+  // Field labels (spec §5.2)
+  name: 'Nombre',
+  description: 'Descripción',
+  slug: 'Código corto',
+  slugHint: 'Minúsculas, sin espacios. Se usa en enlaces. ej: lima',
+  country: 'País',
+  language: 'Idioma',
+  timezone: 'Zona horaria',
+  privacyRules: 'Reglas de privacidad',
+  cityMapArea: 'Área del mapa de la ciudad',
+  cityMapAreaHint:
+    'Arrastra el cuadro para cubrir la ciudad. Los jugadores dentro de él verán esta ciudad automáticamente.',
+  requiredCloseness: 'Proximidad requerida (metros)',
+  requiredClosenessHint:
+    'Cuán cerca debe estar físicamente un jugador para escanear. Por defecto 50 m.',
+  pointsAwarded: 'Puntos otorgados',
+  launchDate: 'Fecha de lanzamiento',
+  startDate: 'Fecha de inicio',
+  endDate: 'Fecha de fin',
+  otherLanguages: 'Otros idiomas',
+  otherLanguagesHint: 'Opcional. Agrega una traducción para cada idioma que admitas.',
+  calibrationNotes: 'Notas de calibración en campo',
+
+  // Confirm messages
+  deactivateCityConfirm: (name: string) =>
+    `Desactivar ${name} ocultará todas sus misiones a los jugadores. El progreso de los jugadores se conserva. ¿Continuar?`,
+  deactivateCampaignConfirm: (name: string) =>
+    `Desactivar la campaña "${name}" ocultará sus misiones. El progreso se conserva. ¿Continuar?`,
+  deactivateMissionConfirm: (name: string) =>
+    `Desactivar la misión "${name}" la ocultará a los jugadores. ¿Continuar?`,
+  deactivateQRConfirm:
+    'Desactivar este código QR hará que el código impreso deje de funcionar. ¿Continuar?',
+  resetPasswordConfirm: (email: string) =>
+    `Esto generará una contraseña temporal para ${email}. Deberás entregársela directamente. ¿Continuar?`,
+  deactivateUserConfirm: (email: string) =>
+    `Desactivar a ${email} impedirá que inicie sesión. Sus datos se conservan. ¿Continuar?`,
+  activateUserConfirm: (email: string) =>
+    `Activar a ${email} permitirá que vuelva a iniciar sesión. ¿Continuar?`,
+
+  // Mission activation guard (spec §5.1)
+  missionNoQuestionsHint: 'Agrega al menos una pregunta antes de activar esta misión.',
+
+  // QR section
+  qrGuardrail:
+    'Generar un nuevo QR hará que cualquier código previamente impreso para esta misión deje de funcionar cuando desactives el anterior. Vuelve a imprimir y reemplaza el código físico.',
+
+  // Password reset reveal
+  tempPasswordTitle: 'Contraseña temporal generada',
+  tempPasswordHint:
+    'Entrega esta contraseña temporal al usuario directamente (en persona o por teléfono). No se mostrará de nuevo. El usuario deberá establecer su propia contraseña al primer inicio de sesión.',
+  tempPasswordCopied: 'Contraseña copiada.',
+
+  // Auth
+  loginTitle: 'Arcavia — Panel de administración',
+  email: 'Correo electrónico',
+  password: 'Contraseña',
+  loginButton: 'Iniciar sesión',
+  loginError: 'Correo o contraseña incorrectos.',
+  roleError: 'Solo los administradores pueden acceder a este panel.',
+  setNewPassword: 'Establecer nueva contraseña',
+  newPassword: 'Nueva contraseña',
+  confirmPassword: 'Confirmar contraseña',
+  passwordMismatch: 'Las contraseñas no coinciden.',
+  currentPassword: 'Contraseña actual',
+
+  // Settings
+  branding: 'Marca y recursos',
+  uiTexts: 'Textos de la app',
+  appInfo: 'Información de la app',
+  appName: 'Nombre de la app',
+  supportContact: 'Contacto de soporte',
+  privacyPolicy: 'Política de privacidad',
+  privacyPolicyVersion: 'Versión de la política',
+  privacyPolicyVersionHint:
+    'Cambiar la versión notificará a los usuarios para que acepten la nueva política.',
+
+  // Dashboard
+  activeCities: 'Ciudades activas',
+  activeCampaigns: 'Campañas activas',
+  activeMissions: 'Misiones activas',
+  totalPlayers: 'Jugadores registrados',
+  recentCompletions: 'Completados recientes',
+  topScorers: 'Mejores puntajes',
+  topScorersNote:
+    'Usa esto para auditar ganadores de premios — el GPS web no es completamente a prueba de suplantación.',
+
+  // Challenges editor
+  question: 'Pregunta',
+  questions: 'Preguntas',
+  addQuestion: 'Agregar pregunta',
+  questionPrompt: 'Enunciado de la pregunta',
+  options: 'Opciones',
+  addOption: 'Agregar opción',
+  optionText: 'Texto de la opción',
+  correctOption: 'Opción correcta',
+  noQuestionsYet: 'Esta misión aún no tiene preguntas. Agrega al menos una para activarla.',
+  minTwoOptions: 'Cada pregunta debe tener al menos 2 opciones.',
+  mustMarkCorrect: 'Debes marcar una opción como correcta.',
+
+  // Map
+  mapPinHint:
+    'Coloca el pin exactamente donde está el código QR impreso. El círculo muestra cuán cerca deben estar los jugadores.',
+  mapFromCalibration: 'Estas coordenadas provienen de la calibración en campo.',
+
+  // Toasts
+  saved: 'Guardado correctamente.',
+  created: 'Creado correctamente.',
+  deleted: 'Eliminado correctamente.',
+  deactivated: 'Desactivado correctamente.',
+  activated: 'Activado correctamente.',
+  error: 'Ocurrió un error. Intenta de nuevo.',
+  passwordChanged: 'Contraseña actualizada correctamente.',
+
+  // Pagination
+  previous: 'Anterior',
+  next: 'Siguiente',
+  showing: (from: number, to: number, total: number) => `Mostrando ${from}–${to} de ${total}`,
+
+  // Empty states
+  noResults: 'No se encontraron resultados.',
+  noCities: 'Aún no hay ciudades.',
+  noCampaigns: 'Aún no hay campañas.',
+  noMissions: 'Aún no hay misiones.',
+  noUsers: 'Aún no hay usuarios.',
+
+  // Map area / location
+  mapAreaLabel: 'Área del mapa',
+  centerPin: 'Centro de la ciudad',
+  locationTab: 'Ubicación',
+  detailsTab: 'Detalles',
+  questionsTab: 'Preguntas',
+  qrTab: 'Código QR',
+} as const
