@@ -1,151 +1,227 @@
-import { useEffect } from 'react'
-import { useFieldArray, useForm, Controller } from 'react-hook-form'
+import { useState } from 'react'
+import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { challengeSchema, type ChallengeFormItem } from '../../lib/validation'
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-  arrayMove,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import {
-  challengesListSchema,
-  type ChallengesListForm,
-  type ChallengeFormItem,
-} from '../../lib/validation'
-import { useChallenges, useSaveChallenges } from '../../api/challenges'
+  useChallenges,
+  useCreateChallenge,
+  useUpdateChallenge,
+  useDeleteChallenge,
+} from '../../api/challenges'
+import { FormField } from '../../components/FormField'
 import { TranslationsEditor } from '../../components/TranslationsEditor'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
+import { ApiClientError } from '../../api/client'
 import { t } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
-import type { Challenge } from '../../api/types'
+import type { Challenge, ChallengeCreate } from '../../api/types'
 
-interface ChallengesEditorProps {
-  missionId: string
-  challengeCount: number
+function blankChallenge(order: number): ChallengeFormItem {
+  return {
+    prompt: '',
+    order_index: order,
+    is_riddle: false,
+    keyword: '',
+    fun_fact: '',
+    options: [
+      { text: '', is_correct: false, order_index: 0, translations: {} },
+      { text: '', is_correct: false, order_index: 1, translations: {} },
+    ],
+    translations: {},
+  }
 }
 
-function toFormItem(c: Challenge): ChallengeFormItem {
+function toForm(c: Challenge): ChallengeFormItem {
   return {
     prompt: c.prompt,
     order_index: c.order_index,
-    translations: c.translations ?? {},
+    is_riddle: c.is_riddle,
+    keyword: c.keyword ?? '',
+    fun_fact: c.fun_fact ?? '',
     options: c.options.map((o) => ({
       text: o.text,
       is_correct: o.is_correct,
       order_index: o.order_index,
       translations: o.translations ?? {},
     })),
+    translations: c.translations ?? {},
   }
 }
 
-interface SortableQuestionProps {
-  id: string
-  index: number
-  control: ReturnType<typeof useForm<ChallengesListForm>>['control']
-  register: ReturnType<typeof useForm<ChallengesListForm>>['register']
-  errors: ReturnType<typeof useForm<ChallengesListForm>>['formState']['errors']
-  onRemove: () => void
-  canRemove: boolean
-  watch: ReturnType<typeof useForm<ChallengesListForm>>['watch']
-  setValue: ReturnType<typeof useForm<ChallengesListForm>>['setValue']
+function toPayload(data: ChallengeFormItem): ChallengeCreate {
+  return {
+    prompt: data.prompt,
+    order_index: data.order_index,
+    is_riddle: data.is_riddle,
+    keyword: data.is_riddle ? data.keyword?.trim() || null : null,
+    fun_fact: data.fun_fact?.trim() || null,
+    options: data.options.map((o, i) => ({
+      text: o.text,
+      is_correct: o.is_correct,
+      order_index: i,
+      translations: o.translations ?? {},
+    })),
+    translations: data.translations ?? {},
+  }
 }
 
-function SortableQuestion({
-  id,
+/**
+ * Per-waypoint challenge editor (spec §6.5). Each question is created/updated
+ * individually against the v2 API; ≥2 options and exactly one correct answer.
+ */
+export function ChallengesEditor({ waypointId }: { waypointId: string }) {
+  const { data: challenges, isLoading } = useChallenges(waypointId)
+  const [newCards, setNewCards] = useState<number[]>([])
+
+  if (isLoading) return <p className="text-gray-400">{t.loading}</p>
+
+  const existing = challenges ?? []
+
+  return (
+    <div className="flex flex-col gap-4">
+      {existing.length === 0 && newCards.length === 0 && (
+        <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-4 py-3">
+          {t.noQuestionsYet}
+        </p>
+      )}
+
+      {existing.map((c, i) => (
+        <ChallengeCard key={c.id} waypointId={waypointId} challenge={c} index={i} />
+      ))}
+
+      {newCards.map((key) => (
+        <ChallengeCard
+          key={`new-${key}`}
+          waypointId={waypointId}
+          index={existing.length}
+          onDone={() => setNewCards((prev) => prev.filter((k) => k !== key))}
+        />
+      ))}
+
+      <button
+        type="button"
+        onClick={() => setNewCards((prev) => [...prev, Date.now()])}
+        className="self-start text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+      >
+        + {t.addQuestion}
+      </button>
+    </div>
+  )
+}
+
+function ChallengeCard({
+  waypointId,
+  challenge,
   index,
-  control,
-  register,
-  errors,
-  onRemove,
-  canRemove,
-  watch,
-  setValue,
-}: SortableQuestionProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id,
+  onDone,
+}: {
+  waypointId: string
+  challenge?: Challenge
+  index: number
+  onDone?: () => void
+}) {
+  const isNew = !challenge
+  const toast = useToast()
+  const create = useCreateChallenge(waypointId)
+  const update = useUpdateChallenge(waypointId, challenge?.id ?? '')
+  const del = useDeleteChallenge(waypointId, challenge?.id ?? '')
+  const [confirm, setConfirm] = useState(false)
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<ChallengeFormItem>({
+    resolver: zodResolver(challengeSchema),
+    defaultValues: challenge ? toForm(challenge) : blankChallenge(index),
   })
-  const style = { transform: CSS.Transform.toString(transform), transition }
 
   const {
     fields: optionFields,
     append: appendOption,
     remove: removeOption,
-  } = useFieldArray({
-    control,
-    name: `challenges.${index}.options`,
-  })
+  } = useFieldArray({ control, name: 'options' })
 
-  const options = watch(`challenges.${index}.options`) ?? []
-  const questionError = errors.challenges?.[index]
+  const options = watch('options') ?? []
+  const isRiddle = watch('is_riddle')
 
-  function handleCorrectChange(optIdx: number) {
-    options.forEach((_, i) => {
-      setValue(`challenges.${index}.options.${i}.is_correct`, i === optIdx)
-    })
+  function setCorrect(optIdx: number) {
+    options.forEach((_, i) => setValue(`options.${i}.is_correct`, i === optIdx))
+  }
+
+  async function onSubmit(data: ChallengeFormItem) {
+    try {
+      if (isNew) {
+        await create.mutateAsync(toPayload({ ...data, order_index: index }))
+        toast.success(t.created)
+        onDone?.()
+      } else {
+        await update.mutateAsync(toPayload(data))
+        toast.success(t.saved)
+      }
+    } catch (err) {
+      toast.error(err instanceof ApiClientError ? err.message : t.error)
+    }
+  }
+
+  async function remove() {
+    if (isNew) {
+      onDone?.()
+      return
+    }
+    try {
+      await del.mutateAsync()
+      toast.success(t.deleted)
+    } catch (err) {
+      toast.error(err instanceof ApiClientError ? err.message : t.error)
+    } finally {
+      setConfirm(false)
+    }
   }
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        'bg-white border border-gray-200 rounded-xl p-4 flex flex-col gap-4',
-        isDragging && 'opacity-60 shadow-lg'
-      )}
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col gap-4"
+      noValidate
     >
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          className="cursor-grab text-gray-400 hover:text-gray-600 text-lg select-none"
-          title="Arrastra para reordenar"
-          aria-label="Reordenar pregunta"
-        >
-          ⠿
-        </button>
         <h4 className="font-medium text-gray-800 flex-1">
           {t.question} {index + 1}
         </h4>
-        {canRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="text-xs text-red-500 hover:text-red-700"
-            aria-label={`Eliminar pregunta ${index + 1}`}
-          >
-            {t.remove}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => (isNew ? remove() : setConfirm(true))}
+          className="text-xs text-red-500 hover:text-red-700"
+          aria-label={`${t.remove} ${index + 1}`}
+        >
+          {t.remove}
+        </button>
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor={`challenge-${index}-prompt`} className="text-sm font-medium text-gray-700">
+        <label
+          htmlFor={`ch-${waypointId}-${index}-prompt`}
+          className="text-sm font-medium text-gray-700"
+        >
           {t.questionPrompt} *
         </label>
         <textarea
-          id={`challenge-${index}-prompt`}
+          id={`ch-${waypointId}-${index}-prompt`}
           className={cn(
             'rounded-lg border px-3 py-2 text-sm resize-y min-h-[60px]',
-            questionError?.prompt ? 'border-red-400 bg-red-50' : 'border-gray-300'
+            errors.prompt ? 'border-red-400 bg-red-50' : 'border-gray-300'
           )}
-          aria-invalid={!!questionError?.prompt}
-          {...register(`challenges.${index}.prompt`)}
+          aria-invalid={!!errors.prompt}
+          {...register('prompt')}
         />
-        {questionError?.prompt && (
+        {errors.prompt && (
           <p className="text-xs text-red-600" role="alert">
-            {questionError.prompt.message}
+            {errors.prompt.message}
           </p>
         )}
       </div>
@@ -174,24 +250,19 @@ function SortableQuestion({
           <div key={opt.id} className="flex items-center gap-3">
             <input
               type="radio"
-              name={`challenge-${index}-correct`}
+              name={`ch-${waypointId}-${index}-correct`}
               checked={options[optIdx]?.is_correct ?? false}
-              onChange={() => handleCorrectChange(optIdx)}
+              onChange={() => setCorrect(optIdx)}
               className="h-4 w-4 text-indigo-600 border-gray-300"
               aria-label={`Opción ${optIdx + 1} es correcta`}
               title={t.correctOption}
             />
             <input
               type="text"
-              className={cn(
-                'flex-1 rounded border px-3 py-1.5 text-sm',
-                questionError?.options?.[optIdx]?.text
-                  ? 'border-red-400 bg-red-50'
-                  : 'border-gray-300'
-              )}
+              className="flex-1 rounded border border-gray-300 px-3 py-1.5 text-sm"
               placeholder={`${t.optionText} ${optIdx + 1}`}
               aria-label={`Opción ${optIdx + 1}`}
-              {...register(`challenges.${index}.options.${optIdx}.text`)}
+              {...register(`options.${optIdx}.text`)}
             />
             {optionFields.length > 2 && (
               <button
@@ -206,15 +277,9 @@ function SortableQuestion({
           </div>
         ))}
 
-        {/* Inline validation messages */}
-        {typeof questionError?.options === 'object' && !Array.isArray(questionError.options) && (
+        {typeof errors.options === 'object' && !Array.isArray(errors.options) && (
           <p className="text-xs text-red-600" role="alert">
-            {(questionError.options as { message?: string }).message}
-          </p>
-        )}
-        {optionFields.length < 2 && (
-          <p className="text-xs text-red-600" role="alert">
-            {t.minTwoOptions}
+            {(errors.options as { message?: string }).message}
           </p>
         )}
         {options.length >= 2 && !options.some((o) => o.is_correct) && (
@@ -224,8 +289,26 @@ function SortableQuestion({
         )}
       </div>
 
+      {/* Riddle */}
+      <div className="flex flex-col gap-2">
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-gray-300"
+            {...register('is_riddle')}
+          />
+          {t.riddle}
+        </label>
+        {isRiddle && (
+          <div className="grid grid-cols-2 gap-3">
+            <FormField as="input" label={t.keyword} hint={t.keywordHint} {...register('keyword')} />
+            <FormField as="input" label={t.funFact} {...register('fun_fact')} />
+          </div>
+        )}
+      </div>
+
       <Controller
-        name={`challenges.${index}.translations`}
+        name="translations"
         control={control}
         render={({ field }) => (
           <TranslationsEditor
@@ -235,134 +318,26 @@ function SortableQuestion({
           />
         )}
       />
-    </div>
-  )
-}
 
-/**
- * Ordered list of N≥1 questions. Not capped at 5 (spec §6.5).
- * Single-correct enforced via radio, save blocked if <2 options or no correct (spec §5.1).
- */
-export function ChallengesEditor({ missionId, challengeCount }: ChallengesEditorProps) {
-  const toast = useToast()
-  const { data: challenges, isLoading } = useChallenges(missionId)
-  const saveChallenges = useSaveChallenges(missionId)
-
-  const {
-    register,
-    control,
-    handleSubmit,
-    watch,
-    setValue,
-    reset,
-    formState: { errors, isSubmitting, isDirty },
-  } = useForm<ChallengesListForm>({
-    resolver: zodResolver(challengesListSchema),
-    defaultValues: { challenges: [] },
-  })
-
-  // Populate form when data loads
-  const { fields, append, remove, move } = useFieldArray({ control, name: 'challenges' })
-
-  // Load existing challenges into form once data arrives
-  useEffect(() => {
-    if (challenges && !isDirty) {
-      reset({ challenges: challenges.map(toFormItem) })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [challenges])
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  )
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-    const oldIndex = fields.findIndex((f) => f.id === active.id)
-    const newIndex = fields.findIndex((f) => f.id === over.id)
-    move(oldIndex, newIndex)
-  }
-
-  async function onSubmit(data: ChallengesListForm) {
-    try {
-      const payload = data.challenges.map((c, idx) => ({
-        ...c,
-        order_index: idx,
-        options: c.options.map((o, oi) => ({ ...o, order_index: oi })),
-      }))
-      await saveChallenges.mutateAsync(payload)
-      toast.success(t.saved)
-    } catch {
-      toast.error(t.error)
-    }
-  }
-
-  if (isLoading) return <p className="text-gray-400">{t.loading}</p>
-
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
-      {fields.length === 0 ? (
-        <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-4 py-3">
-          {t.noQuestionsYet}
-        </p>
-      ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
-            <div className="flex flex-col gap-4">
-              {fields.map((field, index) => (
-                <SortableQuestion
-                  key={field.id}
-                  id={field.id}
-                  index={index}
-                  control={control}
-                  register={register}
-                  errors={errors}
-                  onRemove={() => remove(index)}
-                  canRemove={fields.length > 1}
-                  watch={watch}
-                  setValue={setValue}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-      )}
-
-      <div className="flex justify-between items-center">
-        <button
-          type="button"
-          onClick={() =>
-            append({
-              prompt: '',
-              order_index: fields.length,
-              options: [
-                { text: '', is_correct: false, order_index: 0, translations: {} },
-                { text: '', is_correct: false, order_index: 1, translations: {} },
-              ],
-              translations: {},
-            })
-          }
-          className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-        >
-          + {t.addQuestion}
-        </button>
-
+      <div className="flex justify-end">
         <button
           type="submit"
-          disabled={isSubmitting || !isDirty}
+          disabled={isSubmitting}
           className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
         >
           {isSubmitting ? t.loading : t.save}
         </button>
       </div>
 
-      {errors.challenges?.root?.message && (
-        <p className="text-xs text-red-600" role="alert">
-          {errors.challenges.root.message}
-        </p>
-      )}
+      <ConfirmDialog
+        open={confirm}
+        title={t.delete}
+        message={t.deleteChallengeConfirm}
+        confirmLabel={t.delete}
+        onConfirm={remove}
+        onCancel={() => setConfirm(false)}
+        loading={del.isPending}
+      />
     </form>
   )
 }

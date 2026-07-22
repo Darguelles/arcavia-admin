@@ -9,6 +9,7 @@ import {
   useDeactivateMission,
 } from '../../api/missions'
 import { useCampaigns } from '../../api/campaigns'
+import { useCategories } from '../../api/categories'
 import {
   missionDetailsSchema,
   missionCreateSchema,
@@ -16,17 +17,22 @@ import {
   type MissionCreateForm,
 } from '../../lib/validation'
 import { FormField } from '../../components/FormField'
-import { MapPicker } from '../../components/MapPicker'
 import { TranslationsEditor } from '../../components/TranslationsEditor'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
-import { ChallengesEditor } from './ChallengesEditor'
-import { QRSection } from './QRSection'
+import { CategoriesEditor } from './CategoriesEditor'
+import { PhasesEditor } from './PhasesEditor'
 import { t } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 import { ApiClientError } from '../../api/client'
 
-type Tab = 'details' | 'location' | 'questions' | 'qr'
+type Tab = 'details' | 'categories' | 'phases'
+
+const DIFFICULTIES = [
+  { value: 'baja', label: t.difficultyBaja },
+  { value: 'media', label: t.difficultyMedia },
+  { value: 'alta', label: t.difficultyAlta },
+] as const
 
 export function MissionEditor() {
   const { id } = useParams<{ id?: string }>()
@@ -42,42 +48,43 @@ export function MissionEditor() {
   const deactivateMission = useDeactivateMission(id ?? '')
   const { data: campaignsPage } = useCampaigns({ limit: 200 })
   const campaigns = campaignsPage?.items ?? []
+  const { data: categories } = useCategories(id ?? '')
 
-  // Form for create mode
   const createForm = useForm<MissionCreateForm>({
     resolver: zodResolver(missionCreateSchema),
-    defaultValues: { is_active: false, points: 100, tolerance_radius_m: 50, translations: {} },
+    defaultValues: {
+      is_active: false,
+      difficulty: 'media',
+      reward_points: 0,
+      estimated_time_minutes: 0,
+      translations: {},
+    },
   })
 
-  // Form for edit mode (details tab)
   const detailsForm = useForm<MissionDetailsForm>({
     resolver: zodResolver(missionDetailsSchema),
-    defaultValues: { is_active: false, points: 100, tolerance_radius_m: 50, translations: {} },
+    defaultValues: {
+      is_active: false,
+      difficulty: 'media',
+      reward_points: 0,
+      estimated_time_minutes: 0,
+      translations: {},
+    },
   })
-
-  // Location state (separate save in edit mode)
-  const [mapLat, setMapLat] = useState<number | undefined>()
-  const [mapLng, setMapLng] = useState<number | undefined>()
-  const [mapRadius, setMapRadius] = useState(50)
 
   useEffect(() => {
     if (mission) {
       detailsForm.reset({
         name: mission.name,
         description: mission.description,
-        points: mission.points,
-        tolerance_radius_m: mission.tolerance_radius_m,
+        difficulty: mission.difficulty,
+        reward_points: mission.reward_points,
+        estimated_time_minutes: mission.estimated_time_minutes,
         is_active: mission.is_active,
-        calibration_notes: mission.calibration_notes ?? '',
         translations: mission.translations ?? {},
       })
-      setMapLat(mission.lat)
-      setMapLng(mission.lng)
-      setMapRadius(mission.tolerance_radius_m)
     }
   }, [mission, detailsForm])
-
-  const canActivate = (mission?.challenge_count ?? 0) > 0
 
   async function onCreateSubmit(data: MissionCreateForm) {
     try {
@@ -99,18 +106,9 @@ export function MissionEditor() {
     try {
       await updateMission.mutateAsync(data)
       toast.success(t.saved)
-    } catch {
-      toast.error(t.error)
-    }
-  }
-
-  async function saveLocation() {
-    if (!id || mapLat === undefined || mapLng === undefined) return
-    try {
-      await updateMission.mutateAsync({ lat: mapLat, lng: mapLng, tolerance_radius_m: mapRadius })
-      toast.success(t.saved)
-    } catch {
-      toast.error(t.error)
+    } catch (err) {
+      // Activation can fail if the structure isn't completable (§8.4).
+      toast.error(err instanceof ApiClientError ? err.message : t.error)
     }
   }
 
@@ -129,7 +127,7 @@ export function MissionEditor() {
 
   if (isEdit && isLoading) return <p className="text-gray-400 p-6">{t.loading}</p>
 
-  // ── Create mode (simple form, no tabs) ──────────────────────────────────
+  // ── Create mode ───────────────────────────────────────────────────────────
   if (!isEdit) {
     const {
       register,
@@ -157,15 +155,16 @@ export function MissionEditor() {
         >
           <FormField
             as="select"
-            label="Campaña"
+            label={t.campaign}
             required
             error={errors.campaign_id?.message}
             {...register('campaign_id')}
           >
-            <option value="">Selecciona una campaña</option>
+            <option value="">{t.selectOption}</option>
             {campaigns.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name} — {c.city_name}
+                {c.name}
+                {c.city_name ? ` — ${c.city_name}` : ''}
               </option>
             ))}
           </FormField>
@@ -184,23 +183,34 @@ export function MissionEditor() {
             {...register('description')}
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
+            <FormField
+              as="select"
+              label={t.difficulty}
+              error={errors.difficulty?.message}
+              {...register('difficulty')}
+            >
+              {DIFFICULTIES.map((d) => (
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
+            </FormField>
             <FormField
               as="input"
-              label={t.pointsAwarded}
+              label={t.rewardPoints}
               type="number"
               min={0}
-              error={errors.points?.message}
-              {...register('points', { valueAsNumber: true })}
+              error={errors.reward_points?.message}
+              {...register('reward_points', { valueAsNumber: true })}
             />
             <FormField
               as="input"
-              label={t.requiredCloseness}
+              label={t.estimatedTime}
               type="number"
-              min={5}
-              hint={t.requiredClosenessHint}
-              error={errors.tolerance_radius_m?.message}
-              {...register('tolerance_radius_m', { valueAsNumber: true })}
+              min={0}
+              error={errors.estimated_time_minutes?.message}
+              {...register('estimated_time_minutes', { valueAsNumber: true })}
             />
           </div>
 
@@ -242,10 +252,9 @@ export function MissionEditor() {
 
   // ── Edit mode (tabbed) ────────────────────────────────────────────────────
   const TABS: { key: Tab; label: string }[] = [
-    { key: 'details', label: t.detailsTab },
-    { key: 'location', label: t.locationTab },
-    { key: 'questions', label: t.questionsTab },
-    { key: 'qr', label: t.qrTab },
+    { key: 'details', label: t.detailsSection },
+    { key: 'categories', label: t.categoriesTab },
+    { key: 'phases', label: t.phasesTab },
   ]
 
   return (
@@ -270,7 +279,6 @@ export function MissionEditor() {
         )}
       </div>
 
-      {/* Tab bar */}
       <div className="flex border-b border-gray-200 mb-6">
         {TABS.map((tab) => (
           <button
@@ -289,7 +297,6 @@ export function MissionEditor() {
         ))}
       </div>
 
-      {/* Details tab */}
       {activeTab === 'details' && (
         <form
           onSubmit={detailsForm.handleSubmit(onDetailsSubmit)}
@@ -311,52 +318,49 @@ export function MissionEditor() {
               {...detailsForm.register('description')}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
+              <FormField
+                as="select"
+                label={t.difficulty}
+                error={detailsForm.formState.errors.difficulty?.message}
+                {...detailsForm.register('difficulty')}
+              >
+                {DIFFICULTIES.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </FormField>
               <FormField
                 as="input"
-                label={t.pointsAwarded}
+                label={t.rewardPoints}
                 type="number"
                 min={0}
-                error={detailsForm.formState.errors.points?.message}
-                {...detailsForm.register('points', { valueAsNumber: true })}
+                error={detailsForm.formState.errors.reward_points?.message}
+                {...detailsForm.register('reward_points', { valueAsNumber: true })}
               />
               <FormField
                 as="input"
-                label={t.requiredCloseness}
+                label={t.estimatedTime}
                 type="number"
-                min={5}
-                hint={t.requiredClosenessHint}
-                error={detailsForm.formState.errors.tolerance_radius_m?.message}
-                {...detailsForm.register('tolerance_radius_m', { valueAsNumber: true })}
+                min={0}
+                error={detailsForm.formState.errors.estimated_time_minutes?.message}
+                {...detailsForm.register('estimated_time_minutes', { valueAsNumber: true })}
               />
             </div>
 
-            {/* Activation toggle with guard (spec §5.1, §6.3) */}
             <div className="flex items-center gap-3">
               <input
                 id="mission_active"
                 type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-indigo-600 disabled:opacity-50"
-                disabled={!canActivate}
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600"
                 {...detailsForm.register('is_active')}
               />
               <label htmlFor="mission_active" className="text-sm font-medium text-gray-700">
                 {t.active}
               </label>
-              {!canActivate && (
-                <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                  {t.missionNoQuestionsHint}
-                </span>
-              )}
+              <span className="text-xs text-gray-400">{t.missionNotCompletableHint}</span>
             </div>
-
-            <FormField
-              as="textarea"
-              label={t.calibrationNotes}
-              hint={t.mapFromCalibration}
-              error={detailsForm.formState.errors.calibration_notes?.message}
-              {...detailsForm.register('calibration_notes')}
-            />
 
             <Controller
               name="translations"
@@ -386,72 +390,15 @@ export function MissionEditor() {
         </form>
       )}
 
-      {/* Location tab */}
-      {activeTab === 'location' && (
-        <div className="flex flex-col gap-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                {t.requiredCloseness}
-              </label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  min={5}
-                  max={5000}
-                  value={mapRadius}
-                  onChange={(e) => setMapRadius(Number(e.target.value))}
-                  className="w-28 rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                />
-                <span className="text-sm text-gray-500">metros</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">{t.requiredClosenessHint}</p>
-            </div>
+      {activeTab === 'categories' && id && <CategoriesEditor missionId={id} />}
 
-            {mapLat !== undefined && mapLng !== undefined && (
-              <div className="text-xs text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded">
-                📍 {mapFromCalibrationNote(mapLat, mapLng)}
-              </div>
-            )}
-
-            <MapPicker
-              lat={mapLat}
-              lng={mapLng}
-              toleranceRadius={mapRadius}
-              onChange={(lat, lng) => {
-                setMapLat(lat)
-                setMapLng(lng)
-              }}
-              height="400px"
-            />
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={saveLocation}
-              disabled={mapLat === undefined || mapLng === undefined || updateMission.isPending}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
-            >
-              {updateMission.isPending ? t.loading : t.save}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Questions tab */}
-      {activeTab === 'questions' && id && (
-        <ChallengesEditor missionId={id} challengeCount={mission?.challenge_count ?? 0} />
-      )}
-
-      {/* QR tab */}
-      {activeTab === 'qr' && id && (
-        <QRSection missionId={id} missionName={mission?.name ?? ''} cityName="" />
+      {activeTab === 'phases' && id && (
+        <PhasesEditor missionId={id} hasCategories={(categories?.length ?? 0) > 0} />
       )}
 
       <ConfirmDialog
         open={confirmDeactivate}
-        title={`Desactivar misión`}
+        title={t.deactivate}
         message={mission ? t.deactivateMissionConfirm(mission.name) : ''}
         confirmLabel={t.deactivate}
         onConfirm={handleDeactivate}
@@ -460,8 +407,4 @@ export function MissionEditor() {
       />
     </div>
   )
-}
-
-function mapFromCalibrationNote(lat: number, lng: number) {
-  return `${t.mapFromCalibration} Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`
 }

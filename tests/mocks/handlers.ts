@@ -82,189 +82,157 @@ export const handlers = [
   }),
 
   // Cities
+  // arcavia-api returns a bare array of CityAdminResponse (min/max bbox names,
+  // default_locale, tile_url) — not a paginated envelope. See api/cities.ts.
   http.get(`${BASE}/api/v1/admin/cities`, () => {
-    return HttpResponse.json({
-      items: [
-        {
-          id: 'city-1',
-          name: 'Lima',
-          slug: 'lima',
-          country: 'PE',
-          default_language: 'es-PE',
-          timezone: 'America/Lima',
-          legal_regime: 'LEY_29733',
-          bbox_north: -11.9,
-          bbox_south: -12.2,
-          bbox_east: -76.9,
-          bbox_west: -77.2,
-          center_lat: -12.0464,
-          center_lng: -77.0428,
-          is_active: true,
-          campaign_count: 3,
-          translations: {},
-        },
-      ],
-      total: 1,
-      limit: 20,
-      offset: 0,
-    })
+    return HttpResponse.json([
+      {
+        id: 'city-1',
+        slug: 'lima',
+        name: 'Lima',
+        country: 'PE',
+        default_locale: 'es-PE',
+        timezone: 'America/Lima',
+        center_lat: -12.0464,
+        center_lng: -77.0428,
+        bbox_min_lat: -12.2,
+        bbox_min_lng: -77.2,
+        bbox_max_lat: -11.9,
+        bbox_max_lng: -76.9,
+        legal_regime: 'LEY_29733',
+        tile_url: '',
+        is_active: true,
+        launch_date: null,
+      },
+    ])
   }),
 
   http.post(`${BASE}/api/v1/admin/cities`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>
-    return HttpResponse.json(
-      {
-        id: 'new-city-1',
-        campaign_count: 0,
-        ...body,
-      },
-      { status: 201 }
-    )
+    return HttpResponse.json({ id: 'new-city-1', ...body }, { status: 201 })
   }),
 
   http.get(`${BASE}/api/v1/admin/cities/:id`, ({ params }) => {
     return HttpResponse.json({
       id: params['id'],
-      name: 'Lima',
       slug: 'lima',
+      name: 'Lima',
       country: 'PE',
-      default_language: 'es-PE',
+      default_locale: 'es-PE',
       timezone: 'America/Lima',
-      legal_regime: 'LEY_29733',
-      bbox_north: -11.9,
-      bbox_south: -12.2,
-      bbox_east: -76.9,
-      bbox_west: -77.2,
       center_lat: -12.0464,
       center_lng: -77.0428,
+      bbox_min_lat: -12.2,
+      bbox_min_lng: -77.2,
+      bbox_max_lat: -11.9,
+      bbox_max_lng: -76.9,
+      legal_regime: 'LEY_29733',
+      tile_url: '',
       is_active: true,
-      campaign_count: 3,
-      translations: {},
+      launch_date: null,
     })
   }),
 
-  // Campaigns
+  // Campaigns — arcavia-api returns a bare array (no city_name/mission_count).
   http.get(`${BASE}/api/v1/admin/campaigns`, () => {
-    return HttpResponse.json({
-      items: [
-        {
-          id: 'camp-1',
-          city_id: 'city-1',
-          city_name: 'Lima',
-          name: 'Historia de Lima',
-          description: 'Descubre la historia de Lima',
-          is_active: true,
-          mission_count: 5,
-          translations: {},
-        },
-      ],
-      total: 1,
-      limit: 20,
-      offset: 0,
-    })
+    return HttpResponse.json([
+      {
+        id: 'camp-1',
+        city_id: 'city-1',
+        name: 'Historia de Lima',
+        description: 'Descubre la historia de Lima',
+        translations: {},
+        is_active: true,
+        starts_at: null,
+        ends_at: null,
+      },
+    ])
   }),
 
-  // Missions
+  // Missions (v2: bare array; no location/challenge_count)
   http.get(`${BASE}/api/v1/admin/missions`, () => {
-    return HttpResponse.json({
-      items: [
-        {
-          id: 'mission-1',
-          campaign_id: 'camp-1',
-          campaign_name: 'Historia de Lima',
-          city_id: 'city-1',
-          name: 'El Centro Histórico',
-          description: 'Explora el centro histórico',
-          lat: -12.0464,
-          lng: -77.0428,
-          tolerance_radius_m: 50,
-          points: 100,
-          is_active: false,
-          challenge_count: 0,
-          has_qr: false,
-          translations: {},
-        },
-        {
-          id: 'mission-2',
-          campaign_id: 'camp-1',
-          campaign_name: 'Historia de Lima',
-          city_id: 'city-1',
-          name: 'La Catedral',
-          description: 'Visita la catedral',
-          lat: -12.0465,
-          lng: -77.035,
-          tolerance_radius_m: 50,
-          points: 150,
-          is_active: true,
-          challenge_count: 3,
-          has_qr: true,
-          translations: {},
-        },
-      ],
-      total: 2,
-      limit: 20,
-      offset: 0,
-    })
+    return HttpResponse.json([
+      {
+        id: 'mission-1',
+        campaign_id: 'camp-1',
+        city_id: 'city-1',
+        name: 'El Centro Histórico',
+        description: 'Explora el centro histórico',
+        translations: {},
+        difficulty: 'media',
+        reward_points: 100,
+        estimated_time_minutes: 60,
+        explorers_count: 0,
+        is_active: false,
+      },
+      {
+        id: 'mission-2',
+        campaign_id: 'camp-1',
+        city_id: 'city-1',
+        name: 'La Catedral',
+        description: 'Visita la catedral',
+        translations: {},
+        difficulty: 'alta',
+        reward_points: 150,
+        estimated_time_minutes: 90,
+        explorers_count: 12,
+        is_active: true,
+      },
+    ])
   }),
 
   http.get(`${BASE}/api/v1/admin/missions/:id`, ({ params }) => {
     return HttpResponse.json({
       id: params['id'],
       campaign_id: 'camp-1',
-      campaign_name: 'Historia de Lima',
       city_id: 'city-1',
       name: 'El Centro Histórico',
       description: 'Explora el centro histórico',
-      lat: -12.0464,
-      lng: -77.0428,
-      tolerance_radius_m: 50,
-      points: 100,
-      is_active: false,
-      challenge_count: 0,
-      has_qr: false,
       translations: {},
+      difficulty: 'media',
+      reward_points: 100,
+      estimated_time_minutes: 60,
+      explorers_count: 0,
+      is_active: false,
     })
   }),
 
   http.post(`${BASE}/api/v1/admin/missions`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>
     return HttpResponse.json(
-      { id: 'new-mission-1', challenge_count: 0, has_qr: false, ...body },
+      { id: 'new-mission-1', city_id: 'city-1', explorers_count: 0, ...body },
       { status: 201 }
     )
   }),
 
-  http.put(`${BASE}/api/v1/admin/missions/:id`, async ({ params, request }) => {
+  http.patch(`${BASE}/api/v1/admin/missions/:id`, async ({ params, request }) => {
     const body = (await request.json()) as Record<string, unknown>
-    return HttpResponse.json({ id: params['id'], ...body })
+    return HttpResponse.json({ id: params['id'], city_id: 'city-1', explorers_count: 0, ...body })
   }),
 
-  // Challenges
-  http.get(`${BASE}/api/v1/admin/missions/:id/challenges`, () => {
-    return HttpResponse.json([])
+  // Structure: categories / phases / waypoints
+  http.get(`${BASE}/api/v1/admin/missions/:id/categories`, () => HttpResponse.json([])),
+  http.get(`${BASE}/api/v1/admin/missions/:id/phases`, () => HttpResponse.json([])),
+  http.get(`${BASE}/api/v1/admin/phases/:id/waypoints`, () => HttpResponse.json([])),
+
+  // Challenges (per waypoint)
+  http.get(`${BASE}/api/v1/admin/waypoints/:id/challenges`, () => HttpResponse.json([])),
+
+  http.post(`${BASE}/api/v1/admin/waypoints/:id/challenges`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({ id: 'ch-1', waypoint_id: params['id'], ...body }, { status: 201 })
   }),
 
-  http.put(`${BASE}/api/v1/admin/missions/:id/challenges`, async ({ request }) => {
-    const body = (await request.json()) as unknown[]
-    return HttpResponse.json(
-      (body as Record<string, unknown>[]).map((c, i) => ({
-        id: `ch-${i}`,
-        mission_id: 'mission-1',
-        ...c,
-      }))
-    )
-  }),
+  // QR (per waypoint) — 404 means "no QR yet"
+  http.get(`${BASE}/api/v1/admin/waypoints/:id/qr`, () =>
+    HttpResponse.json({ error: { code: 'QR_NOT_FOUND', message: 'No QR' } }, { status: 404 })
+  ),
 
-  // QR
-  http.get(`${BASE}/api/v1/admin/missions/:id/qr`, () => {
-    return HttpResponse.json([])
-  }),
-
-  http.post(`${BASE}/api/v1/admin/missions/:id/qr`, ({ params }) => {
+  http.post(`${BASE}/api/v1/admin/waypoints/:id/qr`, ({ params }) => {
     return HttpResponse.json(
       {
         id: 'qr-1',
-        mission_id: params['id'],
+        waypoint_id: params['id'],
         token: 'test-qr-token-uuid-1234',
         is_active: true,
         created_at: new Date().toISOString(),

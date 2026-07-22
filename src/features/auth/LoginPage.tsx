@@ -6,6 +6,7 @@ import { loginSchema, type LoginForm } from '../../lib/validation'
 import { FormField } from '../../components/FormField'
 import { t } from '../../lib/i18n'
 import { ApiClientError } from '../../api/client'
+import { DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD } from '../../config'
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -16,7 +17,10 @@ export function LoginPage() {
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) })
+  } = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: DEFAULT_ADMIN_EMAIL, password: DEFAULT_ADMIN_PASSWORD },
+  })
 
   async function onSubmit(data: LoginForm) {
     try {

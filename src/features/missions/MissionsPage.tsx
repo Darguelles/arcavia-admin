@@ -2,13 +2,18 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useMissions } from '../../api/missions'
-import type { Mission } from '../../api/types'
+import type { Difficulty, Mission } from '../../api/types'
 import { DataTable, Pagination } from '../../components/DataTable'
-import { useToast } from '../../components/Toast'
 import { useCityFilter } from '../../components/Layout'
 import { t } from '../../lib/i18n'
 
 const LIMIT = 20
+
+const DIFFICULTY_LABEL: Record<Difficulty, string> = {
+  baja: t.difficultyBaja,
+  media: t.difficultyMedia,
+  alta: t.difficultyAlta,
+}
 
 export function MissionsPage() {
   const navigate = useNavigate()
@@ -25,48 +30,25 @@ export function MissionsPage() {
 
   const columns: ColumnDef<Mission, unknown>[] = [
     { accessorKey: 'name', header: t.name },
-    { accessorKey: 'campaign_name', header: 'Campaña' },
+    { accessorKey: 'campaign_name', header: t.campaign },
+    {
+      accessorKey: 'difficulty',
+      header: t.difficulty,
+      cell: ({ row }) => DIFFICULTY_LABEL[row.original.difficulty],
+    },
+    { accessorKey: 'reward_points', header: t.rewardPoints },
     {
       accessorKey: 'is_active',
       header: t.active,
-      cell: ({ row }) => {
-        const mission = row.original
-        const canActivate = mission.challenge_count > 0
-        // Activation guard: disabled with tooltip if no challenges (spec §5.1)
-        return (
-          <div className="flex items-center gap-2">
-            <span
-              className={`px-2 py-0.5 rounded text-xs font-medium ${
-                mission.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-              }`}
-            >
-              {mission.is_active ? t.active : t.inactive}
-            </span>
-            {!canActivate && !mission.is_active && (
-              <span
-                className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded"
-                title={t.missionNoQuestionsHint}
-              >
-                Sin preguntas
-              </span>
-            )}
-          </div>
-        )
-      },
-    },
-    {
-      accessorKey: 'challenge_count',
-      header: t.questions,
-    },
-    {
-      accessorKey: 'has_qr',
-      header: 'QR',
-      cell: ({ row }) => (row.original.has_qr ? '✓' : '—'),
-    },
-    {
-      accessorKey: 'tolerance_radius_m',
-      header: t.requiredCloseness,
-      cell: ({ row }) => `${row.original.tolerance_radius_m} m`,
+      cell: ({ row }) => (
+        <span
+          className={`px-2 py-0.5 rounded text-xs font-medium ${
+            row.original.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+          }`}
+        >
+          {row.original.is_active ? t.active : t.inactive}
+        </span>
+      ),
     },
     {
       id: 'actions',

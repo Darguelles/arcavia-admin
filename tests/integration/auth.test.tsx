@@ -33,7 +33,9 @@ describe('Login + role gate (spec §4.2, §11.3)', () => {
       </Wrapper>
     )
 
+    await user.clear(screen.getByLabelText(/correo/i))
     await user.type(screen.getByLabelText(/correo/i), 'admin@test.com')
+    await user.clear(screen.getByLabelText(/contraseña/i))
     await user.type(screen.getByLabelText(/contraseña/i), 'adminpass')
     await user.click(screen.getByRole('button', { name: /iniciar sesión/i }))
 
@@ -52,7 +54,9 @@ describe('Login + role gate (spec §4.2, §11.3)', () => {
       </Wrapper>
     )
 
+    await user.clear(screen.getByLabelText(/correo/i))
     await user.type(screen.getByLabelText(/correo/i), 'player@test.com')
+    await user.clear(screen.getByLabelText(/contraseña/i))
     await user.type(screen.getByLabelText(/contraseña/i), 'playerpass')
     await user.click(screen.getByRole('button', { name: /iniciar sesión/i }))
 
@@ -72,7 +76,9 @@ describe('Login + role gate (spec §4.2, §11.3)', () => {
       </Wrapper>
     )
 
+    await user.clear(screen.getByLabelText(/correo/i))
     await user.type(screen.getByLabelText(/correo/i), 'wrong@test.com')
+    await user.clear(screen.getByLabelText(/contraseña/i))
     await user.type(screen.getByLabelText(/contraseña/i), 'wrongpass')
     await user.click(screen.getByRole('button', { name: /iniciar sesión/i }))
 
@@ -125,7 +131,9 @@ describe('Forced-reset routing (spec §4.4, §11.3)', () => {
       </Wrapper>
     )
 
+    await user.clear(screen.getByLabelText(/correo/i))
     await user.type(screen.getByLabelText(/correo/i), 'reset@test.com')
+    await user.clear(screen.getByLabelText(/contraseña/i))
     await user.type(screen.getByLabelText(/contraseña/i), 'resetpass')
     await user.click(screen.getByRole('button', { name: /iniciar sesión/i }))
 

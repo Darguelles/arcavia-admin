@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { MAP_TILE_URL } from '../config'
+import { resolveTileUrl } from '../lib/mapTiles'
 import { t } from '../lib/i18n'
 
 // Fix Leaflet's default icon path issue with bundlers
@@ -46,7 +47,11 @@ export function MapPicker({
     const map = L.map(containerRef.current).setView(defaultCenter, lat && lng ? 16 : 12)
     mapRef.current = map
 
-    L.tileLayer(MAP_TILE_URL, { attribution: '© MapTiler © OpenStreetMap' }).addTo(map)
+    L.tileLayer(resolveTileUrl(MAP_TILE_URL), { attribution: '© OpenStreetMap' }).addTo(map)
+
+    // The container is sized by the surrounding flex/grid layout after mount;
+    // recompute so Leaflet doesn't latch onto a 0/stale size and render blank.
+    const invalidateTimer = setTimeout(() => map.invalidateSize(), 0)
 
     if (!readOnly) {
       map.on('click', (e: L.LeafletMouseEvent) => {
@@ -93,6 +98,7 @@ export function MapPicker({
     }
 
     return () => {
+      clearTimeout(invalidateTimer)
       map.remove()
       mapRef.current = null
       markerRef.current = null

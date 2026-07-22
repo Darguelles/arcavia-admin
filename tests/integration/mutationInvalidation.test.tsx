@@ -40,27 +40,17 @@ describe('Mutation invalidation (spec §11.3)', () => {
     )
   })
 
-  it('shows activation guard badge for missions with 0 challenges', async () => {
-    render(<Wrapper />)
-    await waitFor(
-      () => {
-        expect(screen.getByText('Sin preguntas')).toBeInTheDocument()
-      },
-      { timeout: 5000 }
-    )
-  })
-
-  it('refetches and shows missions after missions list is reset', async () => {
-    // Start with no missions
+  it('refetches and shows missions after the missions list is reset', async () => {
+    // Start with no missions (v2: bare array)
     server.use(
       http.get('http://localhost:8000/api/v1/admin/missions', () => {
-        return HttpResponse.json({ items: [], total: 0, limit: 20, offset: 0 })
+        return HttpResponse.json([])
       })
     )
 
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 0 } } })
 
-    const { rerender } = render(
+    render(
       <MemoryRouter>
         <QueryClientProvider client={qc}>
           <ToastProvider>
@@ -77,34 +67,27 @@ describe('Mutation invalidation (spec §11.3)', () => {
       { timeout: 5000 }
     )
 
-    // Now override handler to return a new mission
+    // Now return a new mission
     server.use(
       http.get('http://localhost:8000/api/v1/admin/missions', () => {
-        return HttpResponse.json({
-          items: [
-            {
-              id: 'mission-new',
-              campaign_id: 'camp-1',
-              campaign_name: 'Historia de Lima',
-              city_id: 'city-1',
-              name: 'Misión Recién Creada',
-              description: '',
-              tolerance_radius_m: 50,
-              points: 100,
-              is_active: false,
-              challenge_count: 0,
-              has_qr: false,
-              translations: {},
-            },
-          ],
-          total: 1,
-          limit: 20,
-          offset: 0,
-        })
+        return HttpResponse.json([
+          {
+            id: 'mission-new',
+            campaign_id: 'camp-1',
+            city_id: 'city-1',
+            name: 'Misión Recién Creada',
+            description: '',
+            translations: {},
+            difficulty: 'media',
+            reward_points: 100,
+            estimated_time_minutes: 0,
+            explorers_count: 0,
+            is_active: false,
+          },
+        ])
       })
     )
 
-    // Invalidate the query (simulating what a mutation would do)
     await qc.invalidateQueries({ queryKey: ['missions'] })
 
     await waitFor(

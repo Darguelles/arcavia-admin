@@ -17,15 +17,15 @@ function Wrapper({ children }: { children: React.ReactNode }) {
   )
 }
 
-describe('ChallengesEditor', () => {
-  it('shows empty state when mission has no questions', async () => {
+describe('ChallengesEditor (per waypoint)', () => {
+  it('shows empty state when the waypoint has no questions', async () => {
     render(
       <Wrapper>
-        <ChallengesEditor missionId="mission-1" challengeCount={0} />
+        <ChallengesEditor waypointId="wp-1" />
       </Wrapper>
     )
     await waitFor(() => {
-      expect(screen.getByText(/Agrega al menos una para activarla/)).toBeInTheDocument()
+      expect(screen.getByText(/Agrega al menos una para activarlo/)).toBeInTheDocument()
     })
   })
 
@@ -33,7 +33,7 @@ describe('ChallengesEditor', () => {
     const user = userEvent.setup()
     render(
       <Wrapper>
-        <ChallengesEditor missionId="mission-1" challengeCount={0} />
+        <ChallengesEditor waypointId="wp-1" />
       </Wrapper>
     )
     await waitFor(() => screen.getByText('+ Agregar pregunta'))
@@ -45,7 +45,7 @@ describe('ChallengesEditor', () => {
     const user = userEvent.setup()
     render(
       <Wrapper>
-        <ChallengesEditor missionId="mission-1" challengeCount={0} />
+        <ChallengesEditor waypointId="wp-1" />
       </Wrapper>
     )
     await waitFor(() => screen.getByText('+ Agregar pregunta'))
@@ -59,24 +59,20 @@ describe('ChallengesEditor', () => {
     const user = userEvent.setup()
     render(
       <Wrapper>
-        <ChallengesEditor missionId="mission-1" challengeCount={0} />
+        <ChallengesEditor waypointId="wp-1" />
       </Wrapper>
     )
     await waitFor(() => screen.getByText('+ Agregar pregunta'))
     await user.click(screen.getByText('+ Agregar pregunta'))
 
-    // Fill prompt using the label text (htmlFor connected)
     await user.type(
       screen.getByLabelText(/Enunciado de la pregunta/i),
       '¿Cuál es la capital de Perú?'
     )
-
-    // Fill options text (required for form to be valid enough to attempt submit)
     const optionInputs = screen.getAllByPlaceholderText(/Texto de la opción/)
     await user.type(optionInputs[0]!, 'Lima')
     await user.type(optionInputs[1]!, 'Cusco')
 
-    // Submit without marking correct answer
     await user.click(screen.getByRole('button', { name: /^guardar$/i }))
 
     await waitFor(() => {
@@ -84,19 +80,19 @@ describe('ChallengesEditor', () => {
     })
   })
 
-  it('allows removing a question (canRemove only if >1)', async () => {
+  it('each question card has a remove control', async () => {
     const user = userEvent.setup()
     render(
       <Wrapper>
-        <ChallengesEditor missionId="mission-1" challengeCount={0} />
+        <ChallengesEditor waypointId="wp-1" />
       </Wrapper>
     )
     await waitFor(() => screen.getByText('+ Agregar pregunta'))
     await user.click(screen.getByText('+ Agregar pregunta'))
     await user.click(screen.getByText('+ Agregar pregunta'))
 
-    // Two questions → both should have Remove buttons
-    const removeButtons = screen.getAllByText('Eliminar')
+    // Two question cards → two card-level remove buttons
+    const removeButtons = screen.getAllByRole('button', { name: /^Eliminar \d+$/ })
     expect(removeButtons.length).toBeGreaterThanOrEqual(2)
   })
 })

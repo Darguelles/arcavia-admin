@@ -65,36 +65,58 @@ export const campaignSchema = z.object({
 })
 export type CampaignForm = z.infer<typeof campaignSchema>
 
-// Mission (details + location together, but saved independently via API)
+// Mission (v2: name/description/difficulty/reward_points/time; no location)
+
+const difficultyEnum = z.enum(['baja', 'media', 'alta'])
 
 export const missionDetailsSchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio').max(150),
   description: z.string().max(2000).optional().default(''),
-  points: z.number().int().min(0).default(100),
-  tolerance_radius_m: z.number().int().min(5).max(5000).default(50),
+  difficulty: difficultyEnum,
+  reward_points: z.number().int().min(0).default(0),
+  estimated_time_minutes: z.number().int().min(0).default(0),
   is_active: z.boolean(),
-  calibration_notes: z.string().max(2000).optional(),
   translations: translationsSchema.optional(),
 })
 export type MissionDetailsForm = z.infer<typeof missionDetailsSchema>
 
-export const missionLocationSchema = z.object({
+export const missionCreateSchema = missionDetailsSchema.extend({
+  campaign_id: z.string().uuid('Selecciona una campaña'),
+})
+export type MissionCreateForm = z.infer<typeof missionCreateSchema>
+
+// Category
+
+export const categorySchema = z.object({
+  name: z.string().min(1, 'El nombre es obligatorio').max(100),
+  threshold_pct: z.number().int().min(0).max(100).default(60),
+  order_index: z.number().int().min(0).default(0),
+})
+export type CategoryForm = z.infer<typeof categorySchema>
+
+// Phase
+
+export const phaseSchema = z.object({
+  name: z.string().min(1, 'El nombre es obligatorio').max(100),
+  order_index: z.number().int().min(0).default(0),
+})
+export type PhaseForm = z.infer<typeof phaseSchema>
+
+// Waypoint
+
+export const waypointSchema = z.object({
+  category_id: z.string().uuid('Selecciona una categoría'),
+  name: z.string().min(1, 'El nombre es obligatorio').max(150),
+  description: z.string().max(2000).optional().default(''),
   lat: z.number({ error: 'Coloca el pin en el mapa' }),
   lng: z.number({ error: 'Coloca el pin en el mapa' }),
   tolerance_radius_m: z.number().int().min(5).max(5000).default(50),
-})
-export type MissionLocationForm = z.infer<typeof missionLocationSchema>
-
-export const missionCreateSchema = z.object({
-  campaign_id: z.string().uuid('Selecciona una campaña'),
-  name: z.string().min(1).max(150),
-  description: z.string().max(2000).optional().default(''),
-  points: z.number().int().min(0).default(100),
-  tolerance_radius_m: z.number().int().min(5).max(5000).default(50),
-  is_active: z.boolean(),
+  points: z.number().int().min(0).default(0),
+  order_index: z.number().int().min(0).default(0),
+  is_active: z.boolean().default(false),
   translations: translationsSchema.optional(),
 })
-export type MissionCreateForm = z.infer<typeof missionCreateSchema>
+export type WaypointForm = z.infer<typeof waypointSchema>
 
 // Option
 
@@ -106,12 +128,15 @@ export const optionSchema = z.object({
 })
 export type OptionFormItem = z.infer<typeof optionSchema>
 
-// Challenge
+// Challenge (belongs to a waypoint; saved individually)
 
 export const challengeSchema = z
   .object({
     prompt: z.string().min(1, 'El enunciado es obligatorio').max(1000),
-    order_index: z.number().int().min(0),
+    order_index: z.number().int().min(0).default(0),
+    is_riddle: z.boolean().default(false),
+    keyword: z.string().max(200).optional(),
+    fun_fact: z.string().max(1000).optional(),
     options: z.array(optionSchema).min(2, 'Mínimo 2 opciones'),
     translations: translationsSchema.optional(),
   })
@@ -120,11 +145,6 @@ export const challengeSchema = z
     path: ['options'],
   })
 export type ChallengeFormItem = z.infer<typeof challengeSchema>
-
-export const challengesListSchema = z.object({
-  challenges: z.array(challengeSchema).min(1, 'Agrega al menos una pregunta'),
-})
-export type ChallengesListForm = z.infer<typeof challengesListSchema>
 
 // Settings
 

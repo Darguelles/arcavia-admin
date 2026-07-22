@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -12,12 +12,115 @@ import { slugify } from '../../lib/utils'
 import { t } from '../../lib/i18n'
 import { ApiClientError } from '../../api/client'
 
-const COUNTRIES = [
-  { code: 'PE', label: 'Perú' },
-  { code: 'ES', label: 'España' },
-  { code: 'MX', label: 'México' },
-  { code: 'CO', label: 'Colombia' },
-  { code: 'AR', label: 'Argentina' },
+interface Place {
+  name: string
+  lat: number
+  lng: number
+}
+
+interface Country {
+  code: string
+  label: string
+  language: string
+  timezone: string
+  legal: 'GDPR' | 'LEY_29733'
+  places: Place[]
+}
+
+// Curated country → city/state list. Selecting a place names the city and
+// centers the map; the operator then fine-tunes the exact area on the map.
+const COUNTRIES: Country[] = [
+  {
+    code: 'PE',
+    label: 'Perú',
+    language: 'es-PE',
+    timezone: 'America/Lima',
+    legal: 'LEY_29733',
+    places: [
+      { name: 'Lima', lat: -12.0464, lng: -77.0428 },
+      { name: 'Arequipa', lat: -16.409, lng: -71.5375 },
+      { name: 'Cusco', lat: -13.532, lng: -71.9675 },
+      { name: 'Trujillo', lat: -8.112, lng: -79.0288 },
+    ],
+  },
+  {
+    code: 'ES',
+    label: 'España',
+    language: 'es-ES',
+    timezone: 'Europe/Madrid',
+    legal: 'GDPR',
+    places: [
+      { name: 'Madrid', lat: 40.4168, lng: -3.7038 },
+      { name: 'Barcelona', lat: 41.3851, lng: 2.1734 },
+      { name: 'Málaga', lat: 36.7213, lng: -4.4214 },
+      { name: 'Sevilla', lat: 37.3891, lng: -5.9845 },
+      { name: 'Valencia', lat: 39.4699, lng: -0.3763 },
+    ],
+  },
+  {
+    code: 'MX',
+    label: 'México',
+    language: 'es-MX',
+    timezone: 'America/Mexico_City',
+    legal: 'GDPR',
+    places: [
+      { name: 'Ciudad de México', lat: 19.4326, lng: -99.1332 },
+      { name: 'Guadalajara', lat: 20.6597, lng: -103.3496 },
+      { name: 'Monterrey', lat: 25.6866, lng: -100.3161 },
+      { name: 'Cancún', lat: 21.1619, lng: -86.8515 },
+    ],
+  },
+  {
+    code: 'CO',
+    label: 'Colombia',
+    language: 'es-CO',
+    timezone: 'America/Bogota',
+    legal: 'GDPR',
+    places: [
+      { name: 'Bogotá', lat: 4.711, lng: -74.0721 },
+      { name: 'Medellín', lat: 6.2442, lng: -75.5812 },
+      { name: 'Cartagena', lat: 10.391, lng: -75.4794 },
+      { name: 'Cali', lat: 3.4516, lng: -76.532 },
+    ],
+  },
+  {
+    code: 'AR',
+    label: 'Argentina',
+    language: 'es-AR',
+    timezone: 'America/Argentina/Buenos_Aires',
+    legal: 'GDPR',
+    places: [
+      { name: 'Buenos Aires', lat: -34.6037, lng: -58.3816 },
+      { name: 'Córdoba', lat: -31.4201, lng: -64.1888 },
+      { name: 'Mendoza', lat: -32.8895, lng: -68.8458 },
+      { name: 'Rosario', lat: -32.9442, lng: -60.6505 },
+    ],
+  },
+  {
+    code: 'NL',
+    label: 'Países Bajos',
+    language: 'nl',
+    timezone: 'Europe/Amsterdam',
+    legal: 'GDPR',
+    places: [
+      { name: 'Ámsterdam', lat: 52.3676, lng: 4.9041 },
+      { name: 'Róterdam', lat: 51.9244, lng: 4.4777 },
+      { name: 'La Haya', lat: 52.0705, lng: 4.3007 },
+      { name: 'Utrecht', lat: 52.0907, lng: 5.1214 },
+      { name: 'Eindhoven', lat: 51.4416, lng: 5.4697 },
+    ],
+  },
+]
+
+const LANGUAGES = [
+  { code: 'es-PE', label: 'Español (Perú)' },
+  { code: 'es-ES', label: 'Español (España)' },
+  { code: 'es-MX', label: 'Español (México)' },
+  { code: 'es-CO', label: 'Español (Colombia)' },
+  { code: 'es-AR', label: 'Español (Argentina)' },
+  { code: 'nl', label: 'Neerlandés' },
+  { code: 'en', label: 'Inglés' },
+  { code: 'pt', label: 'Portugués' },
 ]
 
 const TIMEZONES = [
@@ -26,7 +129,12 @@ const TIMEZONES = [
   'America/Mexico_City',
   'America/Bogota',
   'America/Argentina/Buenos_Aires',
+  'Europe/Amsterdam',
 ]
+
+// Half-extent of the auto-generated bounding box around a selected place.
+const BBOX_HALF_LAT = 0.12
+const BBOX_HALF_LNG = 0.16
 
 export function CityForm() {
   const { id } = useParams<{ id?: string }>()
@@ -80,12 +188,40 @@ export function CityForm() {
     }
   }, [city, setValue])
 
-  // Auto-suggest slug from name
-  const nameValue = watch('name')
-  function handleNameBlur() {
-    const current = watch('slug')
-    if (!current || (city && current === city.slug)) return
-    if (!isEdit) setValue('slug', slugify(nameValue))
+  // Country → city/state cascade + auto-but-editable slug.
+  const [placeName, setPlaceName] = useState('')
+  // Once the operator edits the código corto by hand, stop auto-generating it.
+  const [slugTouched, setSlugTouched] = useState(false)
+  const countryCode = watch('country')
+  const currentCountry = COUNTRIES.find((c) => c.code === countryCode) ?? COUNTRIES[0]
+
+  function maybeAutoSlug(name: string) {
+    if (!slugTouched && !isEdit) setValue('slug', slugify(name), { shouldDirty: true })
+  }
+
+  function handleCountryChange(e: ChangeEvent<HTMLSelectElement>) {
+    const c = COUNTRIES.find((x) => x.code === e.target.value)
+    if (!c) return
+    // Sensible defaults for the picked country (operator can still override).
+    setValue('default_language', c.language, { shouldDirty: true })
+    setValue('timezone', c.timezone, { shouldDirty: true })
+    setValue('legal_regime', c.legal, { shouldDirty: true })
+    setPlaceName('')
+  }
+
+  function handlePlaceChange(e: ChangeEvent<HTMLSelectElement>) {
+    const name = e.target.value
+    setPlaceName(name)
+    const place = currentCountry.places.find((p) => p.name === name)
+    if (!place) return
+    setValue('name', place.name, { shouldDirty: true })
+    maybeAutoSlug(place.name)
+    setValue('center_lat', place.lat)
+    setValue('center_lng', place.lng)
+    setValue('bbox_north', place.lat + BBOX_HALF_LAT, { shouldValidate: true })
+    setValue('bbox_south', place.lat - BBOX_HALF_LAT)
+    setValue('bbox_east', place.lng + BBOX_HALF_LNG)
+    setValue('bbox_west', place.lng - BBOX_HALF_LNG)
   }
 
   async function onSubmit(data: CityFormData) {
@@ -140,31 +276,15 @@ export function CityForm() {
         <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
           <h3 className="font-semibold text-gray-800">Información general</h3>
 
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              as="input"
-              label={t.name}
-              required
-              error={errors.name?.message}
-              {...register('name', { onBlur: handleNameBlur })}
-            />
-            <FormField
-              as="input"
-              label={t.slug}
-              hint={t.slugHint}
-              required
-              error={errors.slug?.message}
-              {...register('slug')}
-            />
-          </div>
-
+          {/* Step 1: country, then city/state — selecting a place names the
+              city and centers the map below. */}
           <div className="grid grid-cols-2 gap-4">
             <FormField
               as="select"
               label={t.country}
               required
               error={errors.country?.message}
-              {...register('country')}
+              {...register('country', { onChange: handleCountryChange })}
             >
               {COUNTRIES.map((c) => (
                 <option key={c.code} value={c.code}>
@@ -175,18 +295,52 @@ export function CityForm() {
 
             <FormField
               as="select"
-              label={t.language}
-              error={errors.default_language?.message}
-              {...register('default_language')}
+              label={t.cityState}
+              hint={t.cityStateHint}
+              value={placeName}
+              onChange={handlePlaceChange}
             >
-              <option value="es-PE">Español (Perú)</option>
-              <option value="es-ES">Español (España)</option>
-              <option value="en">Inglés</option>
-              <option value="pt">Portugués</option>
+              <option value="">{t.selectOption}</option>
+              {currentCountry.places.map((p) => (
+                <option key={p.name} value={p.name}>
+                  {p.name}
+                </option>
+              ))}
             </FormField>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
+            <FormField
+              as="input"
+              label={t.name}
+              required
+              error={errors.name?.message}
+              {...register('name', { onChange: (e) => maybeAutoSlug(e.target.value) })}
+            />
+            <FormField
+              as="input"
+              label={t.slug}
+              hint={t.slugHint}
+              required
+              error={errors.slug?.message}
+              {...register('slug', { onChange: () => setSlugTouched(true) })}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              as="select"
+              label={t.language}
+              error={errors.default_language?.message}
+              {...register('default_language')}
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.label}
+                </option>
+              ))}
+            </FormField>
+
             <FormField
               as="select"
               label={t.timezone}
@@ -199,7 +353,9 @@ export function CityForm() {
                 </option>
               ))}
             </FormField>
+          </div>
 
+          <div className="grid grid-cols-2 gap-4">
             <FormField
               as="select"
               label={t.privacyRules}
@@ -209,9 +365,7 @@ export function CityForm() {
               <option value="LEY_29733">Perú (Ley 29733)</option>
               <option value="GDPR">Europa (GDPR)</option>
             </FormField>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
             <FormField
               as="input"
               label={t.launchDate}
@@ -219,18 +373,18 @@ export function CityForm() {
               error={errors.launch_date?.message}
               {...register('launch_date')}
             />
+          </div>
 
-            <div className="flex items-center gap-3 pt-6">
-              <input
-                id="is_active"
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-indigo-600"
-                {...register('is_active')}
-              />
-              <label htmlFor="is_active" className="text-sm font-medium text-gray-700">
-                {t.active}
-              </label>
-            </div>
+          <div className="flex items-center gap-3">
+            <input
+              id="is_active"
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+              {...register('is_active')}
+            />
+            <label htmlFor="is_active" className="text-sm font-medium text-gray-700">
+              {t.active}
+            </label>
           </div>
 
           <Controller

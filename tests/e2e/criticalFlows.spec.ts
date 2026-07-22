@@ -3,8 +3,8 @@ import { test, expect } from '@playwright/test'
 // Critical flows end-to-end (spec §11.4)
 // Run against a running dev server with a seeded test database.
 
-const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL ?? 'admin@arcavia.test'
-const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? 'AdminTest123!'
+const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL ?? 'admin@arcavia.com'
+const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? '12345678'
 const BASE = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'
 
 test.describe('E2E: Full admin flow', () => {

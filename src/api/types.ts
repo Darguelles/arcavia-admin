@@ -64,65 +64,136 @@ export interface Campaign {
 export type CampaignCreate = Omit<Campaign, 'id' | 'mission_count' | 'city_name'>
 export type CampaignUpdate = Partial<CampaignCreate>
 
-// Mission
+// Mission (v2: Mission → Phases → Waypoints → Challenges; categories cross-cut)
+
+export type Difficulty = 'baja' | 'media' | 'alta'
 
 export interface Mission {
   id: string
   campaign_id: string
-  campaign_name: string
+  campaign_name: string // resolved client-side from the campaigns list
   city_id: string
   name: string
   description: string
-  lat?: number
-  lng?: number
-  tolerance_radius_m: number
-  points: number
-  is_active: boolean
-  challenge_count: number
-  has_qr: boolean
-  calibration_notes?: string
   translations: Record<string, { name: string; description: string }>
+  difficulty: Difficulty
+  reward_points: number
+  estimated_time_minutes: number
+  explorers_count: number
+  is_active: boolean
 }
 
-export type MissionCreate = Omit<
-  Mission,
-  'id' | 'challenge_count' | 'has_qr' | 'campaign_name' | 'city_id'
->
-export type MissionUpdate = Partial<MissionCreate>
+export interface MissionCreate {
+  campaign_id: string
+  name: string
+  description: string
+  difficulty: Difficulty
+  reward_points: number
+  estimated_time_minutes: number
+  is_active?: boolean
+  translations?: Record<string, { name: string; description: string }>
+}
+export type MissionUpdate = Partial<Omit<MissionCreate, 'campaign_id'>>
 
-// Challenge / Option
+// Category (cross-cuts a mission's waypoints; carries the completion threshold)
+
+export interface MissionCategory {
+  id: string
+  mission_id: string
+  name: string
+  threshold_pct: number
+  total_points: number
+  order_index: number
+}
+export interface MissionCategoryCreate {
+  name: string
+  threshold_pct: number
+  order_index: number
+}
+export type MissionCategoryUpdate = Partial<MissionCategoryCreate>
+
+// Phase (ordered stage of a mission; contains waypoints)
+
+export interface Phase {
+  id: string
+  mission_id: string
+  name: string
+  order_index: number
+}
+export interface PhaseCreate {
+  name: string
+  order_index: number
+}
+export type PhaseUpdate = Partial<PhaseCreate>
+
+// Waypoint (a physical point in a phase, tagged with a category; holds the QR)
+
+export interface Waypoint {
+  id: string
+  phase_id: string
+  category_id: string
+  name: string
+  description: string
+  translations: Record<string, { name: string; description: string }>
+  lat: number
+  lng: number
+  tolerance_radius_m: number
+  points: number
+  order_index: number
+  is_active: boolean
+}
+export interface WaypointCreate {
+  category_id: string
+  name: string
+  description: string
+  lat: number
+  lng: number
+  tolerance_radius_m: number
+  points: number
+  order_index: number
+  is_active?: boolean
+  translations?: Record<string, { name: string; description: string }>
+}
+export type WaypointUpdate = Partial<WaypointCreate>
+
+// Challenge / Option (belong to a waypoint)
 
 export interface Option {
   id: string
-  challenge_id: string
   text: string
   is_correct: boolean
   order_index: number
   translations: Record<string, { text: string }>
 }
-
-export type OptionCreate = Omit<Option, 'id' | 'challenge_id'>
-export type OptionUpdate = Partial<OptionCreate>
+export type OptionCreate = Omit<Option, 'id'>
 
 export interface Challenge {
   id: string
-  mission_id: string
+  waypoint_id: string
   prompt: string
   order_index: number
+  is_riddle: boolean
+  keyword?: string | null
+  fun_fact?: string | null
   options: Option[]
   translations: Record<string, { prompt: string }>
 }
-
-export type ChallengeCreate = Omit<Challenge, 'id' | 'mission_id' | 'options'> & {
+export interface ChallengeCreate {
+  prompt: string
+  order_index: number
+  is_riddle: boolean
+  keyword?: string | null
+  fun_fact?: string | null
   options: OptionCreate[]
+  translations?: Record<string, { prompt: string }>
 }
 export type ChallengeUpdate = Partial<ChallengeCreate>
 
-// QR
+// QR (one per waypoint)
 
 export interface QRCode {
   id: string
-  mission_id: string
+  waypoint_id: string
   token: string
   is_active: boolean
   created_at: string

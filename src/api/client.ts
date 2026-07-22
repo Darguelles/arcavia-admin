@@ -53,6 +53,18 @@ async function refreshToken(): Promise<string | null> {
   }
 }
 
+// The API wraps errors as { error: { code, message, details } }; some test
+// mocks return the fields flat. Accept either shape.
+function unwrapError(body: unknown): ApiError {
+  const b = (body ?? {}) as Record<string, unknown>
+  const err = (b.error ?? b) as ApiError
+  return {
+    code: err?.code ?? 'UNKNOWN',
+    message: err?.message ?? 'Error desconocido',
+    details: err?.details,
+  }
+}
+
 async function request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
   const { accessToken, clearSession } = useAuthStore.getState()
 
@@ -70,7 +82,11 @@ async function request<T>(path: string, init: RequestInit = {}, retry = true): P
     credentials: 'include',
   })
 
-  if (res.status === 401 && retry) {
+  // A 401 from an auth endpoint (e.g. bad login) is a real failure, not an
+  // expired session — never try to refresh, or the true error gets masked.
+  const isAuthEndpoint = path.startsWith('/api/v1/auth/')
+
+  if (res.status === 401 && retry && !isAuthEndpoint) {
     const newToken = await refreshToken()
     if (!newToken) {
       clearSession()
@@ -80,22 +96,16 @@ async function request<T>(path: string, init: RequestInit = {}, retry = true): P
   }
 
   if (res.status === 403) {
-    const body = await res.json().catch(() => ({}))
-    const err = body as ApiError
+    const err = unwrapError(await res.json().catch(() => ({})))
     if (err.code === 'PASSWORD_RESET_REQUIRED') {
       useAuthStore.getState().setForceReset(true)
       throw new ApiClientError(403, err.code, err.message)
     }
-    throw new ApiClientError(403, err.code ?? 'FORBIDDEN', err.message ?? 'Sin permiso')
+    throw new ApiClientError(403, err.code, err.message)
   }
 
   if (!res.ok) {
-    let err: ApiError = { code: 'UNKNOWN', message: 'Error desconocido' }
-    try {
-      err = await res.json()
-    } catch {
-      // ignore parse failure
-    }
+    const err = unwrapError(await res.json().catch(() => ({})))
     throw new ApiClientError(
       res.status,
       err.code,

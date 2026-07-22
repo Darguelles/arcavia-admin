@@ -1,8 +1,17 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { MAP_TILE_URL } from '../config'
+import { resolveTileUrl } from '../lib/mapTiles'
 import { t } from '../lib/i18n'
+
+// Fix Leaflet's default marker-icon path with bundlers (same as MapPicker).
+delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+})
 
 export interface BoundingBox {
   bbox_north: number
@@ -19,120 +28,155 @@ interface MapAreaPickerProps {
   height?: string
 }
 
+const DEFAULT_CENTER: L.LatLngExpression = [-12.0464, -77.0428] // Lima fallback
+
+function boxComplete(b: Partial<BoundingBox>): b is BoundingBox {
+  return (
+    b.bbox_north !== undefined &&
+    b.bbox_south !== undefined &&
+    b.bbox_east !== undefined &&
+    b.bbox_west !== undefined &&
+    b.center_lat !== undefined &&
+    b.center_lng !== undefined
+  )
+}
+
+function hasBbox(b: Partial<BoundingBox>): boolean {
+  return (
+    b.bbox_north !== undefined &&
+    b.bbox_south !== undefined &&
+    b.bbox_east !== undefined &&
+    b.bbox_west !== undefined
+  )
+}
+
+/** Stable identity for a (possibly partial) box, used to tell our own echoes apart. */
+function boxKey(b: Partial<BoundingBox>): string {
+  return [b.bbox_north, b.bbox_south, b.bbox_east, b.bbox_west, b.center_lat, b.center_lng].join(
+    ','
+  )
+}
+
 /**
  * Map picker for city bounding box + center pin (spec §6.1).
- * Operator draws rectangle and drops a center pin — no numeric entry.
+ * Operator draws a rectangle and drops a center pin — no numeric entry. Tiles
+ * fall back to OpenStreetMap when no MapTiler key is configured, and the view
+ * recenters when the parent sets a new area (e.g. after picking a city/state).
  */
 export function MapAreaPicker({ value, onChange, height = '400px' }: MapAreaPickerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const rectRef = useRef<L.Rectangle | null>(null)
   const centerRef = useRef<L.Marker | null>(null)
-  const currentBbox = useRef<Partial<BoundingBox>>(value)
+  const boxRef = useRef<Partial<BoundingBox>>(value)
+  // Key of the last box we emitted or synced — lets the sync effect ignore its
+  // own echo (form value round-tripping back) and only react to real changes.
+  const emittedRef = useRef<string>('')
+  const firstCornerRef = useRef<L.LatLng | null>(null)
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
 
+  const emit = useCallback(() => {
+    const b = boxRef.current
+    if (boxComplete(b)) {
+      emittedRef.current = boxKey(b)
+      onChangeRef.current(b)
+    }
+  }, [])
+
+  const drawRect = useCallback((north: number, south: number, east: number, west: number) => {
+    const map = mapRef.current
+    if (!map) return
+    if (rectRef.current) rectRef.current.remove()
+    rectRef.current = L.rectangle(
+      [
+        [south, west],
+        [north, east],
+      ],
+      { color: '#6366f1', weight: 2, fillOpacity: 0.1 }
+    ).addTo(map)
+  }, [])
+
+  const placeCenter = useCallback(
+    (lat: number, lng: number) => {
+      const map = mapRef.current
+      if (!map) return
+      if (centerRef.current) {
+        centerRef.current.setLatLng([lat, lng])
+      } else {
+        const marker = L.marker([lat, lng], {
+          draggable: true,
+          title: 'Centro de la ciudad',
+        }).addTo(map)
+        marker.on('dragend', () => {
+          const pos = marker.getLatLng()
+          boxRef.current = { ...boxRef.current, center_lat: pos.lat, center_lng: pos.lng }
+          emit()
+        })
+        centerRef.current = marker
+      }
+    },
+    [emit]
+  )
+
+  // Create the map once.
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
-    const defaultCenter: L.LatLngExpression =
-      value.center_lat && value.center_lng
+    const initialCenter: L.LatLngExpression =
+      value.center_lat !== undefined && value.center_lng !== undefined
         ? [value.center_lat, value.center_lng]
-        : [-12.0464, -77.0428]
+        : DEFAULT_CENTER
 
-    const map = L.map(containerRef.current).setView(defaultCenter, 11)
+    const map = L.map(containerRef.current).setView(initialCenter, 11)
     mapRef.current = map
 
-    L.tileLayer(MAP_TILE_URL, { attribution: '© MapTiler © OpenStreetMap' }).addTo(map)
+    L.tileLayer(resolveTileUrl(MAP_TILE_URL), { attribution: '© OpenStreetMap' }).addTo(map)
 
-    // Draw existing bounding box
-    if (
-      value.bbox_north !== undefined &&
-      value.bbox_south !== undefined &&
-      value.bbox_east !== undefined &&
-      value.bbox_west !== undefined
-    ) {
-      drawRect(value.bbox_north, value.bbox_south, value.bbox_east, value.bbox_west)
+    // The container is sized by the surrounding layout after mount; recompute so
+    // Leaflet doesn't latch onto a 0/stale size and render blank grey tiles.
+    const invalidateTimer = setTimeout(() => map.invalidateSize(), 0)
+
+    boxRef.current = value
+    if (hasBbox(value)) {
+      drawRect(value.bbox_north!, value.bbox_south!, value.bbox_east!, value.bbox_west!)
     }
-
     if (value.center_lat !== undefined && value.center_lng !== undefined) {
       placeCenter(value.center_lat, value.center_lng)
     }
+    emittedRef.current = boxKey(value)
 
-    // Click starts drawing a bounding box by dropping corners
-    let firstCorner: L.LatLng | null = null
-
+    // Click twice to drop the two opposite corners of the bounding box.
     map.on('click', (e: L.LeafletMouseEvent) => {
-      if (!firstCorner) {
-        firstCorner = e.latlng
+      if (!firstCornerRef.current) {
+        firstCornerRef.current = e.latlng
         return
       }
-      const north = Math.max(firstCorner.lat, e.latlng.lat)
-      const south = Math.min(firstCorner.lat, e.latlng.lat)
-      const east = Math.max(firstCorner.lng, e.latlng.lng)
-      const west = Math.min(firstCorner.lng, e.latlng.lng)
-      drawRect(north, south, east, west)
-      firstCorner = null
-    })
-
-    map.on('contextmenu', (e: L.LeafletMouseEvent) => {
-      placeCenter(e.latlng.lat, e.latlng.lng)
-    })
-
-    function drawRect(north: number, south: number, east: number, west: number) {
-      if (rectRef.current) rectRef.current.remove()
-      rectRef.current = L.rectangle(
-        [
-          [south, west],
-          [north, east],
-        ],
-        {
-          color: '#6366f1',
-          weight: 2,
-          fillOpacity: 0.1,
-        }
-      ).addTo(map)
-      currentBbox.current = {
-        ...currentBbox.current,
+      const north = Math.max(firstCornerRef.current.lat, e.latlng.lat)
+      const south = Math.min(firstCornerRef.current.lat, e.latlng.lat)
+      const east = Math.max(firstCornerRef.current.lng, e.latlng.lng)
+      const west = Math.min(firstCornerRef.current.lng, e.latlng.lng)
+      boxRef.current = {
+        ...boxRef.current,
         bbox_north: north,
         bbox_south: south,
         bbox_east: east,
         bbox_west: west,
       }
-      emitChange()
-    }
+      drawRect(north, south, east, west)
+      firstCornerRef.current = null
+      emit()
+    })
 
-    function placeCenter(cLat: number, cLng: number) {
-      if (centerRef.current) {
-        centerRef.current.setLatLng([cLat, cLng])
-      } else {
-        centerRef.current = L.marker([cLat, cLng], {
-          draggable: true,
-          title: 'Centro de la ciudad',
-        }).addTo(map)
-        centerRef.current.on('dragend', () => {
-          const pos = centerRef.current!.getLatLng()
-          currentBbox.current = { ...currentBbox.current, center_lat: pos.lat, center_lng: pos.lng }
-          emitChange()
-        })
-      }
-      currentBbox.current = { ...currentBbox.current, center_lat: cLat, center_lng: cLng }
-      emitChange()
-    }
-
-    function emitChange() {
-      const b = currentBbox.current
-      if (
-        b.bbox_north !== undefined &&
-        b.bbox_south !== undefined &&
-        b.bbox_east !== undefined &&
-        b.bbox_west !== undefined &&
-        b.center_lat !== undefined &&
-        b.center_lng !== undefined
-      ) {
-        onChange(b as BoundingBox)
-      }
-    }
+    // Right-click fixes the city center.
+    map.on('contextmenu', (e: L.LeafletMouseEvent) => {
+      boxRef.current = { ...boxRef.current, center_lat: e.latlng.lat, center_lng: e.latlng.lng }
+      placeCenter(e.latlng.lat, e.latlng.lng)
+      emit()
+    })
 
     return () => {
+      clearTimeout(invalidateTimer)
       map.remove()
       mapRef.current = null
       rectRef.current = null
@@ -140,6 +184,44 @@ export function MapAreaPicker({ value, onChange, height = '400px' }: MapAreaPick
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // React to external area changes (e.g. selecting a city/state) — redraw and
+  // recenter the view. Skips our own emitted values to avoid feedback loops.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const key = boxKey(value)
+    if (key === emittedRef.current) return
+
+    boxRef.current = { ...value }
+    if (hasBbox(value)) {
+      drawRect(value.bbox_north!, value.bbox_south!, value.bbox_east!, value.bbox_west!)
+    }
+    if (value.center_lat !== undefined && value.center_lng !== undefined) {
+      placeCenter(value.center_lat, value.center_lng)
+    }
+    if (hasBbox(value)) {
+      map.fitBounds([
+        [value.bbox_south!, value.bbox_west!],
+        [value.bbox_north!, value.bbox_east!],
+      ])
+    } else if (value.center_lat !== undefined && value.center_lng !== undefined) {
+      map.setView([value.center_lat, value.center_lng], 12)
+    }
+    emittedRef.current = key
+    // Depend on the individual box fields, not the `value` object identity
+    // (which is new every render), so this only runs on real area changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    value.bbox_north,
+    value.bbox_south,
+    value.bbox_east,
+    value.bbox_west,
+    value.center_lat,
+    value.center_lng,
+    drawRect,
+    placeCenter,
+  ])
 
   return (
     <div className="flex flex-col gap-2">

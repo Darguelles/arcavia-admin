@@ -32,6 +32,31 @@ Panel de administración para la plataforma Arcavia Quest. SPA en React 19 + Typ
    ```
    Abre `http://localhost:5173/admin`.
 
+## Credenciales de administrador por defecto (local)
+
+Para el uso local, el formulario de login viene pre-rellenado con las credenciales
+de administrador por defecto:
+
+| Campo | Valor |
+|---|---|
+| Correo | `admin@arcavia.com` |
+| Contraseña | `12345678` |
+
+El panel sigue autenticándose contra la API (`arcavia-api`), por lo que esta cuenta
+debe existir en el backend. Al levantar la plataforma con `docker compose up` (desde
+la raíz del monorepo) el paso `seed` la crea automáticamente vía
+`arcavia-api/scripts/seed_admin.py` (idempotente). Para (re)crearla manualmente:
+
+```bash
+docker compose run --rm seed          # ejecuta seed_cities + seed_admin
+# o solo el admin, contra la API en marcha:
+docker exec arcavia-api-1 python scripts/seed_admin.py
+```
+
+Puedes cambiar los valores pre-rellenados del formulario con las variables de entorno
+`VITE_DEFAULT_ADMIN_EMAIL` y `VITE_DEFAULT_ADMIN_PASSWORD`, y las credenciales que
+siembra el backend con `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
+
 ## Comandos disponibles
 
 | Comando | Descripción |
@@ -55,8 +80,8 @@ Los tests E2E requieren un servidor corriendo y una BD con datos de prueba:
 
 ```bash
 export PLAYWRIGHT_BASE_URL=http://localhost:5173
-export TEST_ADMIN_EMAIL=admin@arcavia.test
-export TEST_ADMIN_PASSWORD=AdminTest123!
+export TEST_ADMIN_EMAIL=admin@arcavia.com
+export TEST_ADMIN_PASSWORD=12345678
 npm run test:e2e
 ```
 
