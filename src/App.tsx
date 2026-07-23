@@ -11,6 +11,7 @@ import { CampaignForm } from './features/campaigns/CampaignForm'
 import { MissionsPage } from './features/missions/MissionsPage'
 import { MissionEditor } from './features/missions/MissionEditor'
 import { WaypointEditor } from './features/missions/WaypointEditor'
+import { ReviewQueuePage } from './features/reviewQueue/ReviewQueuePage'
 import { UsersPage } from './features/users/UsersPage'
 import { UserDetail } from './features/users/UserDetail'
 import { SettingsPage } from './features/settings/SettingsPage'
@@ -42,6 +43,7 @@ export default function App() {
                   element={<WaypointEditor />}
                 />
                 <Route path="missions/:id" element={<MissionEditor />} />
+                <Route path="review-queue" element={<ReviewQueuePage />} />
                 <Route path="users" element={<UsersPage />} />
                 <Route path="users/:id" element={<UserDetail />} />
                 <Route path="settings" element={<SettingsPage />} />

@@ -50,6 +50,13 @@ export function WaypointEditor() {
       points: 0,
       order_index: 0,
       is_active: false,
+      requires_qr: false,
+      requires_keyword: false,
+      required_accuracy_m: 50,
+      dwell_seconds: 60,
+      min_fixes: 4,
+      onsite_keyword_prompt: '',
+      onsite_keyword_answer: '',
       translations: {},
     },
   })
@@ -67,6 +74,13 @@ export function WaypointEditor() {
         points: waypoint.points,
         order_index: waypoint.order_index,
         is_active: waypoint.is_active,
+        requires_qr: waypoint.requires_qr,
+        requires_keyword: waypoint.requires_keyword,
+        required_accuracy_m: waypoint.required_accuracy_m,
+        dwell_seconds: waypoint.dwell_seconds,
+        min_fixes: waypoint.min_fixes,
+        onsite_keyword_prompt: waypoint.onsite_keyword_prompt ?? '',
+        onsite_keyword_answer: waypoint.onsite_keyword_answer ?? '',
         translations: waypoint.translations ?? {},
       })
     }
@@ -83,6 +97,8 @@ export function WaypointEditor() {
   const lat = watch('lat')
   const lng = watch('lng')
   const radius = watch('tolerance_radius_m')
+  const requiresQr = watch('requires_qr')
+  const requiresKeyword = watch('requires_keyword')
 
   async function onSubmit(data: WaypointForm) {
     try {
@@ -201,6 +217,95 @@ export function WaypointEditor() {
             )}
           </div>
 
+          {/* Geolocation check-in is the always-on presence proof (uses the
+              pin + tolerance_radius_m above as the geofence). QR and an
+              on-site keyword are optional additional factors. */}
+          <div className="border border-gray-200 rounded-lg p-4 flex flex-col gap-4">
+            <h4 className="text-sm font-semibold text-gray-800">{t.validationSection}</h4>
+
+            <div className="grid grid-cols-3 gap-4">
+              <FormField
+                as="input"
+                label={t.requiredAccuracy}
+                type="number"
+                min={5}
+                max={500}
+                hint={t.requiredAccuracyHint}
+                error={errors.required_accuracy_m?.message}
+                {...register('required_accuracy_m', { valueAsNumber: true })}
+              />
+              <FormField
+                as="input"
+                label={t.dwellSeconds}
+                type="number"
+                min={0}
+                max={600}
+                hint={t.dwellSecondsHint}
+                error={errors.dwell_seconds?.message}
+                {...register('dwell_seconds', { valueAsNumber: true })}
+              />
+              <FormField
+                as="input"
+                label={t.minFixes}
+                type="number"
+                min={1}
+                max={50}
+                hint={t.minFixesHint}
+                error={errors.min_fixes?.message}
+                {...register('min_fixes', { valueAsNumber: true })}
+              />
+            </div>
+
+            <div className="flex items-start gap-3">
+              <input
+                id="wp_requires_qr"
+                type="checkbox"
+                className="h-4 w-4 mt-0.5 rounded border-gray-300 text-indigo-600"
+                {...register('requires_qr')}
+              />
+              <div className="text-sm">
+                <label htmlFor="wp_requires_qr" className="font-medium text-gray-700">
+                  {t.requireQr}
+                </label>
+                <p className="text-xs text-gray-400">{t.requireQrHint}</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <input
+                id="wp_requires_keyword"
+                type="checkbox"
+                className="h-4 w-4 mt-0.5 rounded border-gray-300 text-indigo-600"
+                {...register('requires_keyword')}
+              />
+              <div className="text-sm">
+                <label htmlFor="wp_requires_keyword" className="font-medium text-gray-700">
+                  {t.requireKeyword}
+                </label>
+                <p className="text-xs text-gray-400">{t.requireKeywordHint}</p>
+              </div>
+            </div>
+
+            {requiresKeyword && (
+              <div className="grid grid-cols-2 gap-4 pl-7">
+                <FormField
+                  as="input"
+                  label={t.onsiteKeywordPrompt}
+                  hint={t.onsiteKeywordPromptHint}
+                  error={errors.onsite_keyword_prompt?.message}
+                  {...register('onsite_keyword_prompt')}
+                />
+                <FormField
+                  as="input"
+                  label={t.onsiteKeywordAnswer}
+                  hint={t.onsiteKeywordAnswerHint}
+                  error={errors.onsite_keyword_answer?.message}
+                  {...register('onsite_keyword_answer')}
+                />
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center gap-3">
             <input
               id="wp_active"
@@ -256,14 +361,19 @@ export function WaypointEditor() {
             <ChallengesEditor waypointId={waypointId} />
           </section>
 
-          <section className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-800 mb-4">{t.qrTab}</h3>
-            <QRSection
-              waypointId={waypointId}
-              waypointName={waypoint?.name ?? ''}
-              cityName={city?.name ?? ''}
-            />
-          </section>
+          {/* Only relevant once "Requerir escaneo de código QR" is checked
+              above — QR stays available as a fallback, but de-emphasized for
+              waypoints that rely on geolocation (+ keyword) instead. */}
+          {requiresQr && (
+            <section className="bg-white rounded-xl border border-gray-200 p-6">
+              <h3 className="font-semibold text-gray-800 mb-4">{t.qrTab}</h3>
+              <QRSection
+                waypointId={waypointId}
+                waypointName={waypoint?.name ?? ''}
+                cityName={city?.name ?? ''}
+              />
+            </section>
+          )}
         </>
       )}
     </div>

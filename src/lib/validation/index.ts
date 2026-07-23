@@ -103,19 +103,39 @@ export const phaseSchema = z.object({
 export type PhaseForm = z.infer<typeof phaseSchema>
 
 // Waypoint
+//
+// Geolocation dwell check-in is the always-on presence proof; requires_qr/
+// requires_keyword are optional additional factors. requires_keyword needs
+// both an on-site prompt and its expected answer to actually work.
 
-export const waypointSchema = z.object({
-  category_id: z.string().uuid('Selecciona una categoría'),
-  name: z.string().min(1, 'El nombre es obligatorio').max(150),
-  description: z.string().max(2000).optional().default(''),
-  lat: z.number({ error: 'Coloca el pin en el mapa' }),
-  lng: z.number({ error: 'Coloca el pin en el mapa' }),
-  tolerance_radius_m: z.number().int().min(5).max(5000).default(50),
-  points: z.number().int().min(0).default(0),
-  order_index: z.number().int().min(0).default(0),
-  is_active: z.boolean().default(false),
-  translations: translationsSchema.optional(),
-})
+export const waypointSchema = z
+  .object({
+    category_id: z.string().uuid('Selecciona una categoría'),
+    name: z.string().min(1, 'El nombre es obligatorio').max(150),
+    description: z.string().max(2000).optional().default(''),
+    lat: z.number({ error: 'Coloca el pin en el mapa' }),
+    lng: z.number({ error: 'Coloca el pin en el mapa' }),
+    tolerance_radius_m: z.number().int().min(5).max(5000).default(50),
+    points: z.number().int().min(0).default(0),
+    order_index: z.number().int().min(0).default(0),
+    is_active: z.boolean().default(false),
+    requires_qr: z.boolean().default(false),
+    requires_keyword: z.boolean().default(false),
+    required_accuracy_m: z.number().int().min(5).max(500).default(50),
+    dwell_seconds: z.number().int().min(0).max(600).default(60),
+    min_fixes: z.number().int().min(1).max(50).default(4),
+    onsite_keyword_prompt: z.string().max(300).optional().default(''),
+    onsite_keyword_answer: z.string().max(200).optional().default(''),
+    translations: translationsSchema.optional(),
+  })
+  .refine(
+    (w) =>
+      !w.requires_keyword || (w.onsite_keyword_prompt.trim() && w.onsite_keyword_answer.trim()),
+    {
+      message: 'La verificación por palabra clave necesita una pregunta y una respuesta.',
+      path: ['onsite_keyword_answer'],
+    }
+  )
 export type WaypointForm = z.infer<typeof waypointSchema>
 
 // Option

@@ -88,6 +88,34 @@ test.describe('E2E: Full admin flow', () => {
     await expect(page.getByText(/guardado/i)).toBeVisible()
   })
 
+  test('waypoint geo check-in config persists (geo + QR + keyword)', async ({ page }) => {
+    // Geolocation dwell check-in is the always-on default for every waypoint;
+    // requires_qr/requires_keyword are optional additional factors. This
+    // exercises both toggles together and confirms the values round-trip.
+    await page.getByRole('link', { name: /misiones/i }).click()
+    const missionLink = page.getByRole('link', { name: /misión e2e/i }).first()
+    if (!(await missionLink.isVisible())) test.skip()
+    await missionLink.click()
+
+    await page.getByRole('button', { name: /fases y puntos/i }).click()
+    await page.getByRole('link', { name: /agregar punto/i }).click()
+
+    await page.getByLabel(/^nombre$/i).fill('Arco Colonial E2E')
+    await page.getByLabel(/requerir escaneo de código qr/i).check()
+    await page.getByLabel(/requerir palabra clave en el lugar/i).check()
+    await page.getByLabel(/pregunta para el jugador/i).fill('¿Qué año tiene la placa?')
+    await page.getByLabel(/respuesta esperada/i).fill('1887')
+
+    await page.getByRole('button', { name: /^crear$/i }).click()
+    await expect(page.getByText(/creado correctamente/i)).toBeVisible()
+
+    // Reload and confirm the config persisted server-side, not just in the form.
+    await page.reload()
+    await expect(page.getByLabel(/requerir escaneo de código qr/i)).toBeChecked()
+    await expect(page.getByLabel(/requerir palabra clave en el lugar/i)).toBeChecked()
+    await expect(page.getByLabel(/respuesta esperada/i)).toHaveValue('1887')
+  })
+
   test('reset user password → one-time reveal → deactivate user', async ({ page }) => {
     await page.getByRole('link', { name: /usuarios/i }).click()
     await expect(page.getByRole('heading', { name: /usuarios/i })).toBeVisible()

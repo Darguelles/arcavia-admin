@@ -211,9 +211,98 @@ export const handlers = [
   }),
 
   // Structure: categories / phases / waypoints
-  http.get(`${BASE}/api/v1/admin/missions/:id/categories`, () => HttpResponse.json([])),
+  http.get(`${BASE}/api/v1/admin/missions/:id/categories`, () =>
+    HttpResponse.json([
+      {
+        id: 'cat-1',
+        mission_id: 'mission-1',
+        name: 'Cultural',
+        threshold_pct: 60,
+        total_points: 0,
+        order_index: 0,
+      },
+    ])
+  ),
   http.get(`${BASE}/api/v1/admin/missions/:id/phases`, () => HttpResponse.json([])),
   http.get(`${BASE}/api/v1/admin/phases/:id/waypoints`, () => HttpResponse.json([])),
+
+  // Waypoints — geolocation check-in is the always-on default; requires_qr/
+  // requires_keyword are optional additional factors (see WaypointEditor.tsx).
+  http.get(`${BASE}/api/v1/admin/waypoints/:id`, ({ params }) => {
+    return HttpResponse.json({
+      id: params['id'],
+      phase_id: 'phase-1',
+      category_id: 'cat-1',
+      name: 'Arco Colonial',
+      description: '',
+      translations: {},
+      lat: -12.0464,
+      lng: -77.0428,
+      tolerance_radius_m: 50,
+      points: 100,
+      order_index: 0,
+      is_active: false,
+      requires_qr: false,
+      requires_keyword: false,
+      required_accuracy_m: 50,
+      dwell_seconds: 60,
+      min_fixes: 4,
+      onsite_keyword_prompt: null,
+      onsite_keyword_answer: null,
+    })
+  }),
+
+  http.post(`${BASE}/api/v1/admin/phases/:id/waypoints`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({ id: 'new-waypoint-1', ...body }, { status: 201 })
+  }),
+
+  http.patch(`${BASE}/api/v1/admin/waypoints/:id`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({ id: params['id'], ...body })
+  }),
+
+  // Geo check-in operator review queue
+  http.get(`${BASE}/api/v1/admin/geo-attempts`, () => {
+    return HttpResponse.json({
+      items: [
+        {
+          id: 'attempt-1',
+          user_id: 'user-abc12345',
+          waypoint_id: 'wp-1',
+          waypoint_name: 'Arco Colonial',
+          city_id: 'city-1',
+          status: 'passed',
+          accepted_fixes: 5,
+          best_accuracy_m: 8,
+          worst_accuracy_m: 12,
+          flags: ['zero_jitter'],
+          created_at: '2026-07-01T10:00:00Z',
+          reviewed_at: null,
+        },
+      ],
+      limit: 20,
+      offset: 0,
+    })
+  }),
+
+  http.patch(`${BASE}/api/v1/admin/geo-attempts/:id`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({
+      id: params['id'],
+      user_id: 'user-abc12345',
+      waypoint_id: 'wp-1',
+      waypoint_name: 'Arco Colonial',
+      city_id: 'city-1',
+      status: body.action === 'reject' ? 'failed' : 'passed',
+      accepted_fixes: 5,
+      best_accuracy_m: 8,
+      worst_accuracy_m: 12,
+      flags: ['zero_jitter'],
+      created_at: '2026-07-01T10:00:00Z',
+      reviewed_at: new Date().toISOString(),
+    })
+  }),
 
   // Challenges (per waypoint)
   http.get(`${BASE}/api/v1/admin/waypoints/:id/challenges`, () => HttpResponse.json([])),

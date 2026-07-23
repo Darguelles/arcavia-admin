@@ -33,7 +33,7 @@ without re-discovering it. See also `docs/admin-architecture.md`, `docs/api-cont
   `src/components/Layout.tsx`).
 - **Forms → React Hook Form + Zod**; all schemas live in `src/lib/validation/index.ts`.
 - **One API module per resource** in `src/api/`: `cities, campaigns, missions, categories,
-  phases, waypoints, challenges, qr, users, settings`.
+  phases, waypoints, challenges, qr, users, settings, geoAttempts`.
 - **All UI strings are Spanish**, centralized in `src/lib/i18n.ts` (import `t`). Add keys
   there, don't inline literals.
 - **No raw UUIDs shown to users** — IDs live in URLs and React keys only.
@@ -89,13 +89,29 @@ City → Campaign → Mission → (Categories + Phases) → Waypoints → (Chall
 - **Phase (Fase)** — an ordered **leg of the route** (`order_index`). It answers *"in what order
   does the player move through the stops?"*
 - **Waypoint** — a physical point (`lat`/`lng`, `tolerance_radius_m`, `points`). Belongs to
-  **exactly one phase AND one category**. Holds the QR code.
+  **exactly one phase AND one category**. **Geolocation dwell check-in is the always-on
+  presence proof for every waypoint** — `tolerance_radius_m` doubles as the geofence radius,
+  no separate column. `requires_qr`/`requires_keyword` are optional additional factors an
+  admin can require on top (e.g. geo+QR for a reward-bearing waypoint at a site where QR is
+  physically allowed; geo+keyword — an on-site question, `onsite_keyword_prompt`/
+  `onsite_keyword_answer` — where it isn't). `required_accuracy_m`/`dwell_seconds`/
+  `min_fixes` tune the geofence. **Guardrail**: the API rejects saving a waypoint with an
+  active reward if both `requires_qr` and `requires_keyword` are off
+  (`GEO_ONLY_PRIZE_CONFLICT`) — raw dwell-only presence is never sufficient alone for a prize.
 - **Challenge** — a question attached to a waypoint (`prompt` + ≥2 `options`, exactly one
   correct). May be a **riddle** (`is_riddle` → `keyword` + `fun_fact`, revealed only on a
-  correct answer).
-- **QR** — one per waypoint; the player scans it to unlock that waypoint's challenges.
-  "Retire" = PATCH it inactive (there is no delete). Backend added `GET /admin/waypoints/{id}/qr`
-  so the UI can show an existing code.
+  correct answer). Unrelated to a waypoint's `onsite_keyword_*` fields — same word, two
+  different mechanics (a quiz reward word vs. an on-site presence-proof answer).
+- **QR** — one per waypoint, only relevant when that waypoint's `requires_qr` is on; the
+  player scans it as one of the check-in's optional additional factors (never the sole
+  presence proof anymore). "Retire" = PATCH it inactive (there is no delete). Backend added
+  `GET /admin/waypoints/{id}/qr` so the UI can show an existing code.
+- **Geo check-in attempt** — one row per presence-proof attempt (`waypoint_geo_attempts`,
+  exposed at `/admin/geo-attempts`). Anti-cheat heuristics (frozen coordinates, constant
+  accuracy, etc.) never hard-reject — they append a flag and the attempt still completes;
+  flagged attempts land in the **operator review queue** (`ReviewQueuePage`,
+  `/admin/review-queue`) for a human to approve or reject. Reject is flag-only (audit/ban
+  signal) — it does not revert the progress/points already granted.
 
 **Category vs Phase (the common confusion):** a waypoint has *both* at once — they are
 orthogonal. **Phase = sequence/order**; **Category = scoring bucket + theme with a completion
@@ -111,11 +127,17 @@ cannot be active with 0 challenges; a mission cannot activate unless its structu
 
 - **Routing**: `src/App.tsx` — everything under `/admin`. Missions area routes:
   `missions`, `missions/new`, `missions/:id` (editor),
-  `missions/:missionId/waypoints/new?phaseId=…`, `missions/:missionId/waypoints/:waypointId`.
+  `missions/:missionId/waypoints/new?phaseId=…`, `missions/:missionId/waypoints/:waypointId`,
+  plus `review-queue` (operator review of flagged geo check-in attempts).
 - **Missions UI** (`src/features/missions/`): `MissionsPage` (list), `MissionEditor`
   (create + edit tabs **Detalles / Categorías / Fases y puntos**), `CategoriesEditor`,
   `PhasesEditor` (each phase lists its waypoints), `WaypointEditor` (fields + `MapPicker`
-  centered on the city + `ChallengesEditor` + `QRSection`), `ChallengesEditor`, `QRSection`.
+  centered on the city + geolocation check-in config (`requires_qr`/`requires_keyword` +
+  geofence/dwell tuning) + `ChallengesEditor` + `QRSection`, the last shown only when
+  `requires_qr` is on), `ChallengesEditor`, `QRSection`.
+- **Review queue** (`src/features/reviewQueue/ReviewQueuePage.tsx`): lists geo check-in
+  attempts with anti-cheat flags (default filter), approve/reject via `ConfirmDialog` — same
+  `DataTable` + confirm + toast + invalidate pattern as everywhere else. `src/api/geoAttempts.ts`.
 - **Other features** (`src/features/`): `auth`, `dashboard`, `cities`, `campaigns`, `users`,
   `settings`.
 - **Shared components** (`src/components/`): `FormField`, `DataTable`, `MapPicker`,

@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { to: '/admin/cities', label: t.cities, icon: '🏙' },
   { to: '/admin/campaigns', label: t.campaigns, icon: '📋' },
   { to: '/admin/missions', label: t.missions, icon: '📍' },
+  { to: '/admin/review-queue', label: t.reviewQueue, icon: '🚩' },
   { to: '/admin/users', label: t.users, icon: '👤' },
   { to: '/admin/settings', label: t.settings, icon: '⚙' },
 ]

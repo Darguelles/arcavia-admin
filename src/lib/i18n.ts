@@ -179,8 +179,47 @@ export const t = {
 
   // Map
   mapPinHint:
-    'Coloca el pin exactamente donde está el código QR impreso. El círculo muestra cuán cerca deben estar los jugadores.',
+    'Coloca el pin donde está el punto físico. El círculo muestra cuán cerca deben estar los jugadores — también es el radio de la geocerca para la verificación por ubicación.',
   mapFromCalibration: 'Estas coordenadas provienen de la calibración en campo.',
+
+  // Geo check-in (waypoint validation — geolocation is the default; QR and
+  // palabra clave son factores adicionales opcionales)
+  validationSection: 'Verificación',
+  requireQr: 'Requerir escaneo de código QR',
+  requireQrHint:
+    'Factor adicional opcional, además de la ubicación. Actívalo cuando el sitio permita colocar un QR físico — recomendado para puntos con premio.',
+  requireKeyword: 'Requerir palabra clave en el lugar',
+  requireKeywordHint:
+    'Factor adicional opcional para sitios donde no se puede colocar un QR (p. ej. patrimonio protegido) — el jugador lee algo físicamente presente (año de una placa, número de arcos) y lo escribe.',
+  requiredAccuracy: 'Precisión de GPS requerida (metros)',
+  requiredAccuracyHint: 'Rechaza lecturas de GPS menos precisas que este valor. Por defecto 50 m.',
+  dwellSeconds: 'Tiempo mínimo en el lugar (segundos)',
+  dwellSecondsHint: 'Cuánto tiempo debe permanecer el jugador dentro del radio. Por defecto 60 s.',
+  minFixes: 'Lecturas mínimas de GPS',
+  minFixesHint: 'Cantidad mínima de lecturas de ubicación aceptadas durante la espera.',
+  onsiteKeywordPrompt: 'Pregunta para el jugador',
+  onsiteKeywordPromptHint: 'Algo que solo se puede leer estando físicamente en el lugar.',
+  onsiteKeywordAnswer: 'Respuesta esperada',
+  onsiteKeywordAnswerHint: 'Nunca se muestra al jugador — se compara en el servidor.',
+  geoOnlyPrizeConflict:
+    'Un punto con premio no puede depender solo de la ubicación — requiere QR o palabra clave también.',
+
+  // Operator review queue (flagged geo check-in attempts)
+  reviewQueue: 'Verificaciones',
+  reviewQueueTitle: 'Cola de revisión',
+  reviewQueueEmpty: 'No hay intentos marcados para revisar.',
+  reviewQueueHint:
+    'Estos intentos pasaron la verificación de ubicación pero el sistema detectó una señal sospechosa (coordenadas congeladas, precisión constante, etc.). Nunca se rechazan automáticamente — revísalos y decide.',
+  flags: 'Señales',
+  accuracyRange: 'Precisión (mejor–peor)',
+  approve: 'Aprobar',
+  reject: 'Rechazar',
+  reviewNote: 'Nota (opcional)',
+  approveConfirm: 'Marcar este intento como revisado y aprobado. ¿Continuar?',
+  rejectConfirm:
+    'Esto marca el intento como rechazado para fines de auditoría. NO revierte el progreso ni los puntos que el jugador ya obtuvo. ¿Continuar?',
+  reviewed: 'Revisado',
+  notReviewed: 'Sin revisar',
 
   // Toasts
   saved: 'Guardado correctamente.',

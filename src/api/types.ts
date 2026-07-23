@@ -126,7 +126,12 @@ export interface PhaseCreate {
 }
 export type PhaseUpdate = Partial<PhaseCreate>
 
-// Waypoint (a physical point in a phase, tagged with a category; holds the QR)
+// Waypoint (a physical point in a phase, tagged with a category)
+//
+// Geolocation dwell check-in is the always-on presence proof for every
+// waypoint (tolerance_radius_m already doubles as the geofence radius — no
+// separate column). requires_qr/requires_keyword layer optional additional
+// factors on top; onsite_keyword_answer is admin-only, never shown to players.
 
 export interface Waypoint {
   id: string
@@ -141,6 +146,13 @@ export interface Waypoint {
   points: number
   order_index: number
   is_active: boolean
+  requires_qr: boolean
+  requires_keyword: boolean
+  required_accuracy_m: number
+  dwell_seconds: number
+  min_fixes: number
+  onsite_keyword_prompt: string | null
+  onsite_keyword_answer: string | null
 }
 export interface WaypointCreate {
   category_id: string
@@ -152,6 +164,13 @@ export interface WaypointCreate {
   points: number
   order_index: number
   is_active?: boolean
+  requires_qr?: boolean
+  requires_keyword?: boolean
+  required_accuracy_m?: number
+  dwell_seconds?: number
+  min_fixes?: number
+  onsite_keyword_prompt?: string | null
+  onsite_keyword_answer?: string | null
   translations?: Record<string, { name: string; description: string }>
 }
 export type WaypointUpdate = Partial<WaypointCreate>
@@ -252,6 +271,38 @@ export interface TopScorer {
   email: string
   points: number
   city_name: string
+}
+
+// Geo check-in attempts (operator review queue) — the algorithm only surfaces
+// candidates via `flags`; approve/reject is a human decision. Reject is
+// flag-only (audit/ban signal), it never reverts the progress the attempt
+// already granted.
+
+export type GeoAttemptStatus = 'in_progress' | 'passed' | 'failed' | 'expired'
+
+export interface GeoAttempt {
+  id: string
+  user_id: string
+  waypoint_id: string
+  waypoint_name: string
+  city_id: string
+  status: GeoAttemptStatus
+  accepted_fixes: number
+  best_accuracy_m: number | null
+  worst_accuracy_m: number | null
+  flags: string[]
+  created_at: string
+  reviewed_at: string | null
+}
+
+export interface GeoAttemptDetail extends GeoAttempt {
+  first_fix_at: string | null
+  last_fix_at: string | null
+  qr_verified: boolean
+  keyword_verified: boolean
+  fix_sample: Record<string, unknown>[]
+  reviewed_by_admin_id: string | null
+  review_note: string | null
 }
 
 // Paginated response
