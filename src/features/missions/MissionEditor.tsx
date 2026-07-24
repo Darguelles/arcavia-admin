@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, type ChangeEvent } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -7,6 +7,8 @@ import {
   useCreateMission,
   useUpdateMission,
   useDeactivateMission,
+  useUploadMissionImage,
+  useDeleteMissionImage,
 } from '../../api/missions'
 import { useCampaigns } from '../../api/campaigns'
 import { useCategories } from '../../api/categories'
@@ -303,6 +305,8 @@ export function MissionEditor() {
           className="flex flex-col gap-4"
           noValidate
         >
+          {id && <MissionImageSection missionId={id} imageUrl={mission?.image_url ?? null} />}
+
           <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
             <FormField
               as="input"
@@ -404,6 +408,105 @@ export function MissionEditor() {
         onConfirm={handleDeactivate}
         onCancel={() => setConfirmDeactivate(false)}
         loading={deactivateMission.isPending}
+      />
+    </div>
+  )
+}
+
+// Keep in sync with the backend guard (config.allowed_image_types /
+// max_image_upload_bytes) so the operator gets an instant, clear rejection
+// instead of a round-trip error.
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+/**
+ * Mission cover image. Uploaded after the mission exists (edit mode only), the
+ * same way rewards handle their image. The bytes go straight to the API, which
+ * stores them via the configured backend (local disk in dev, S3 in prod) and
+ * returns the mission with its new image_url.
+ */
+function MissionImageSection({
+  missionId,
+  imageUrl,
+}: {
+  missionId: string
+  imageUrl: string | null
+}) {
+  const toast = useToast()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const uploadImage = useUploadMissionImage(missionId)
+  const removeImage = useDeleteMissionImage(missionId)
+  const busy = uploadImage.isPending || removeImage.isPending
+
+  async function onFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // let the operator re-pick the same file after an error
+    if (!file) return
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return toast.error(t.invalidImageType)
+    if (file.size > MAX_IMAGE_BYTES) return toast.error(t.imageTooLarge)
+    try {
+      await uploadImage.mutateAsync(file)
+      toast.success(t.imageUploaded)
+    } catch (err) {
+      toast.error(err instanceof ApiClientError ? err.message : t.error)
+    }
+  }
+
+  async function onRemove() {
+    try {
+      await removeImage.mutateAsync()
+      toast.success(t.imageRemoved)
+    } catch (err) {
+      toast.error(err instanceof ApiClientError ? err.message : t.error)
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+      <div>
+        <h3 className="text-sm font-semibold text-gray-900">{t.missionImage}</h3>
+        <p className="text-xs text-gray-400 mt-0.5">{t.missionImageHint}</p>
+      </div>
+
+      <div className="flex items-center gap-5">
+        <div className="h-28 w-44 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+          {imageUrl ? (
+            <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center px-2 text-center text-xs text-gray-400">
+              {t.noImageYet}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col items-start gap-2">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={busy}
+            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+          >
+            {busy ? t.loading : imageUrl ? t.changeImage : t.uploadImage}
+          </button>
+          {imageUrl && (
+            <button
+              type="button"
+              onClick={onRemove}
+              disabled={busy}
+              className="px-2 py-1 text-sm font-medium text-red-600 hover:text-red-800 disabled:opacity-60"
+            >
+              {t.removeImage}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={onFile}
       />
     </div>
   )

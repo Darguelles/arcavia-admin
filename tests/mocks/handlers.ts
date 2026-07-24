@@ -158,6 +158,7 @@ export const handlers = [
         city_id: 'city-1',
         name: 'El Centro Histórico',
         description: 'Explora el centro histórico',
+        image_url: null,
         translations: {},
         difficulty: 'media',
         reward_points: 100,
@@ -171,6 +172,7 @@ export const handlers = [
         city_id: 'city-1',
         name: 'La Catedral',
         description: 'Visita la catedral',
+        image_url: null,
         translations: {},
         difficulty: 'alta',
         reward_points: 150,
@@ -188,6 +190,7 @@ export const handlers = [
       city_id: 'city-1',
       name: 'El Centro Histórico',
       description: 'Explora el centro histórico',
+      image_url: null,
       translations: {},
       difficulty: 'media',
       reward_points: 100,
@@ -200,15 +203,56 @@ export const handlers = [
   http.post(`${BASE}/api/v1/admin/missions`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>
     return HttpResponse.json(
-      { id: 'new-mission-1', city_id: 'city-1', explorers_count: 0, ...body },
+      { id: 'new-mission-1', city_id: 'city-1', image_url: null, explorers_count: 0, ...body },
       { status: 201 }
     )
   }),
 
   http.patch(`${BASE}/api/v1/admin/missions/:id`, async ({ params, request }) => {
     const body = (await request.json()) as Record<string, unknown>
-    return HttpResponse.json({ id: params['id'], city_id: 'city-1', explorers_count: 0, ...body })
+    return HttpResponse.json({
+      id: params['id'],
+      city_id: 'city-1',
+      image_url: null,
+      explorers_count: 0,
+      ...body,
+    })
   }),
+
+  // Cover image — raw image bytes in, mission with image_url out.
+  http.put(`${BASE}/api/v1/admin/missions/:id/image`, ({ params }) =>
+    HttpResponse.json({
+      id: params['id'],
+      campaign_id: 'camp-1',
+      city_id: 'city-1',
+      name: 'El Centro Histórico',
+      description: 'Explora el centro histórico',
+      image_url: 'http://localhost:8000/media/missions/mission-1/abc.jpg',
+      translations: {},
+      difficulty: 'media',
+      reward_points: 100,
+      estimated_time_minutes: 60,
+      explorers_count: 0,
+      is_active: false,
+    })
+  ),
+
+  http.delete(`${BASE}/api/v1/admin/missions/:id/image`, ({ params }) =>
+    HttpResponse.json({
+      id: params['id'],
+      campaign_id: 'camp-1',
+      city_id: 'city-1',
+      name: 'El Centro Histórico',
+      description: 'Explora el centro histórico',
+      image_url: null,
+      translations: {},
+      difficulty: 'media',
+      reward_points: 100,
+      estimated_time_minutes: 60,
+      explorers_count: 0,
+      is_active: false,
+    })
+  ),
 
   // Structure: categories / phases / waypoints
   http.get(`${BASE}/api/v1/admin/missions/:id/categories`, () =>

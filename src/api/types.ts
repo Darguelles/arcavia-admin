@@ -75,6 +75,9 @@ export interface Mission {
   city_id: string
   name: string
   description: string
+  // Absolute URL of the uploaded cover image, or null. Set via the image
+  // endpoints, not the create/update payload.
+  image_url: string | null
   translations: Record<string, { name: string; description: string }>
   difficulty: Difficulty
   reward_points: number

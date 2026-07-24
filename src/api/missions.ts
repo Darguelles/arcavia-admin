@@ -15,6 +15,7 @@ interface MissionApi {
   city_id: string
   name: string
   description: string
+  image_url: string | null
   translations: Record<string, unknown>
   difficulty: Difficulty
   reward_points: number
@@ -31,6 +32,7 @@ function fromApi(m: MissionApi, campaignName = ''): Mission {
     city_id: m.city_id,
     name: m.name,
     description: m.description ?? '',
+    image_url: m.image_url ?? null,
     translations: (m.translations ?? {}) as Mission['translations'],
     difficulty: m.difficulty,
     reward_points: m.reward_points,
@@ -139,5 +141,32 @@ export function useDeactivateMission(id: string) {
   return useMutation({
     mutationFn: () => apiClient.delete<void>(`/api/v1/admin/missions/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: missionKeys.all }),
+  })
+}
+
+// Cover image — the bytes go straight to the API (raw body); it stores them via
+// the configured backend (local disk in dev, S3 in prod) and returns the mission
+// with its new image_url.
+export function useUploadMissionImage(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (file: File) =>
+      fromApi(await apiClient.upload<MissionApi>(`/api/v1/admin/missions/${id}/image`, file)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: missionKeys.all })
+      qc.invalidateQueries({ queryKey: missionKeys.detail(id) })
+    },
+  })
+}
+
+export function useDeleteMissionImage(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () =>
+      fromApi(await apiClient.delete<MissionApi>(`/api/v1/admin/missions/${id}/image`)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: missionKeys.all })
+      qc.invalidateQueries({ queryKey: missionKeys.detail(id) })
+    },
   })
 }

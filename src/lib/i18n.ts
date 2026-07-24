@@ -152,6 +152,18 @@ export const t = {
   detailsSection: 'Detalles',
   categoriesTab: 'Categorías',
   phasesTab: 'Fases y puntos',
+  // Mission cover image
+  missionImage: 'Imagen de portada',
+  missionImageHint:
+    'Se muestra en la lista de misiones y en la pantalla de la misión. JPG, PNG o WebP, hasta 5 MB.',
+  uploadImage: 'Subir imagen',
+  changeImage: 'Cambiar imagen',
+  removeImage: 'Quitar imagen',
+  noImageYet: 'Sin imagen. Se usará un degradado como respaldo.',
+  imageUploaded: 'Imagen actualizada.',
+  imageRemoved: 'Imagen eliminada.',
+  imageTooLarge: 'La imagen supera el tamaño máximo (5 MB).',
+  invalidImageType: 'Formato no permitido. Usa JPG, PNG o WebP.',
   categories: 'Categorías',
   category: 'Categoría',
   addCategory: 'Agregar categoría',

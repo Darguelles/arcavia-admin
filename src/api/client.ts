@@ -136,4 +136,13 @@ export const apiClient = {
       body: body !== undefined ? JSON.stringify(body) : undefined,
     }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
+  // Raw binary upload (e.g. an image): send the file bytes with their own MIME
+  // type. Overrides the default application/json content-type so the backend
+  // reads the body as the image itself (no multipart).
+  upload: <T>(path: string, file: File, method: 'PUT' | 'POST' = 'PUT') =>
+    request<T>(path, {
+      method,
+      body: file,
+      headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    }),
 }
