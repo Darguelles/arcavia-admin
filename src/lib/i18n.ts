@@ -116,6 +116,12 @@ export const t = {
   privacyPolicyVersion: 'Versión de la política',
   privacyPolicyVersionHint:
     'Cambiar la versión notificará a los usuarios para que acepten la nueva política.',
+  legalContent: 'Contenido legal',
+  gameInstructions: 'Instrucciones del juego',
+  gameInstructionsHint:
+    'Cómo jugar, ganar puntos y completar misiones. Se muestra en la app del jugador.',
+  termsAndConditions: 'Términos y condiciones',
+  termsAndConditionsHint: 'Texto legal que ven los jugadores desde el menú de información.',
 
   // Dashboard
   activeCities: 'Ciudades activas',

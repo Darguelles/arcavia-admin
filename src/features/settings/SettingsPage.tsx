@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useSetting, useUpdateSetting, uploadAsset } from '../../api/settings'
@@ -9,7 +9,7 @@ import { useToast } from '../../components/Toast'
 import { t } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 
-type Section = 'branding' | 'texts' | 'appinfo'
+type Section = 'branding' | 'texts' | 'appinfo' | 'content'
 
 function BrandingSection() {
   const toast = useToast()
@@ -258,6 +258,88 @@ function AppInfoSection() {
   )
 }
 
+/**
+ * Plain-text setting editor backed by a single settings key holding a string.
+ * Used for operator-editable player-app copy (game instructions, terms) that the
+ * PWA reads from the public settings store and renders in its info menu.
+ */
+function PlainTextSetting({
+  settingKey,
+  label,
+  hint,
+}: {
+  settingKey: string
+  label: string
+  hint: string
+}) {
+  const toast = useToast()
+  const { data, isLoading } = useSetting<string>(settingKey)
+  const updateSetting = useUpdateSetting(settingKey)
+  const [value, setValue] = useState('')
+  const [seeded, setSeeded] = useState(false)
+
+  // Seed the textarea from the fetched value once, then let the user edit freely.
+  useEffect(() => {
+    if (!seeded && data) {
+      setValue(typeof data.value === 'string' ? data.value : '')
+      setSeeded(true)
+    }
+  }, [data, seeded])
+
+  async function handleSave() {
+    try {
+      await updateSetting.mutateAsync(value)
+      toast.success(t.saved)
+    } catch {
+      toast.error(t.error)
+    }
+  }
+
+  if (isLoading) return <p className="text-gray-400">{t.loading}</p>
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+      <div>
+        <h3 className="font-semibold text-gray-800">{label}</h3>
+        <p className="text-sm text-gray-500">{hint}</p>
+      </div>
+      <textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        rows={12}
+        className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-800 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+      />
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={updateSetting.isPending}
+          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+        >
+          {updateSetting.isPending ? t.loading : t.save}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ContentSection() {
+  return (
+    <div className="flex flex-col gap-6">
+      <PlainTextSetting
+        settingKey="game_instructions"
+        label={t.gameInstructions}
+        hint={t.gameInstructionsHint}
+      />
+      <PlainTextSetting
+        settingKey="terms_and_conditions"
+        label={t.termsAndConditions}
+        hint={t.termsAndConditionsHint}
+      />
+    </div>
+  )
+}
+
 export function SettingsPage() {
   const [section, setSection] = useState<Section>('branding')
 
@@ -265,6 +347,7 @@ export function SettingsPage() {
     { key: 'branding', label: t.branding },
     { key: 'texts', label: t.uiTexts },
     { key: 'appinfo', label: t.appInfo },
+    { key: 'content', label: t.legalContent },
   ]
 
   return (
@@ -293,6 +376,7 @@ export function SettingsPage() {
         {section === 'branding' && <BrandingSection />}
         {section === 'texts' && <UITextsSection />}
         {section === 'appinfo' && <AppInfoSection />}
+        {section === 'content' && <ContentSection />}
       </div>
     </div>
   )
