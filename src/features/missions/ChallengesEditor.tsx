@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import {
   useForm,
   useFieldArray,
@@ -16,6 +16,8 @@ import {
   useCreateChallenge,
   useUpdateChallenge,
   useDeleteChallenge,
+  useUploadChallengeImage,
+  useDeleteChallengeImage,
 } from '../../api/challenges'
 import { FormField } from '../../components/FormField'
 import { TranslationsEditor } from '../../components/TranslationsEditor'
@@ -362,6 +364,15 @@ function ChallengeCard({
         errors={errors}
       />
 
+      {/* Reference image — only once the challenge exists (needs its id). */}
+      {challenge && (
+        <ChallengeImageSection
+          waypointId={waypointId}
+          challengeId={challenge.id}
+          imageUrl={challenge.image_url ?? null}
+        />
+      )}
+
       <div className="flex justify-end">
         <button
           type="submit"
@@ -490,6 +501,108 @@ function DraftChallengeCard({
         watch={watch}
         setValue={setValue}
         errors={errors}
+      />
+    </div>
+  )
+}
+
+// Keep in sync with the backend guard (config.allowed_image_types /
+// max_image_upload_bytes) so the operator gets an instant, clear rejection
+// instead of a round-trip error.
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+/**
+ * Optional per-challenge reference image, uploaded once the challenge exists.
+ * The bytes go straight to the API, which stores them via the configured backend
+ * (local disk in dev, S3 in prod) and returns the challenge with its new
+ * image_url — shown on the player's DESAFIO screen. Mirrors the mission cover
+ * image flow.
+ */
+function ChallengeImageSection({
+  waypointId,
+  challengeId,
+  imageUrl,
+}: {
+  waypointId: string
+  challengeId: string
+  imageUrl: string | null
+}) {
+  const toast = useToast()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const uploadImage = useUploadChallengeImage(waypointId, challengeId)
+  const removeImage = useDeleteChallengeImage(waypointId, challengeId)
+  const busy = uploadImage.isPending || removeImage.isPending
+
+  async function onFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // let the operator re-pick the same file after an error
+    if (!file) return
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return toast.error(t.invalidImageType)
+    if (file.size > MAX_IMAGE_BYTES) return toast.error(t.imageTooLarge)
+    try {
+      await uploadImage.mutateAsync(file)
+      toast.success(t.imageUploaded)
+    } catch (err) {
+      toast.error(err instanceof ApiClientError ? err.message : t.error)
+    }
+  }
+
+  async function onRemove() {
+    try {
+      await removeImage.mutateAsync()
+      toast.success(t.imageRemoved)
+    } catch (err) {
+      toast.error(err instanceof ApiClientError ? err.message : t.error)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+      <div>
+        <h5 className="text-sm font-medium text-gray-800">{t.challengeImage}</h5>
+        <p className="mt-0.5 text-xs text-gray-400">{t.challengeImageHint}</p>
+      </div>
+
+      <div className="flex items-center gap-5">
+        <div className="h-24 w-40 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-white">
+          {imageUrl ? (
+            <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center px-2 text-center text-xs text-gray-400">
+              {t.noImageYet}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col items-start gap-2">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={busy}
+            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+          >
+            {busy ? t.loading : imageUrl ? t.changeImage : t.uploadImage}
+          </button>
+          {imageUrl && (
+            <button
+              type="button"
+              onClick={onRemove}
+              disabled={busy}
+              className="px-2 py-1 text-sm font-medium text-red-600 hover:text-red-800 disabled:opacity-60"
+            >
+              {t.removeImage}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={onFile}
       />
     </div>
   )

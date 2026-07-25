@@ -171,6 +171,10 @@ export const t = {
   imageRemoved: 'Imagen eliminada.',
   imageTooLarge: 'La imagen supera el tamaño máximo (5 MB).',
   invalidImageType: 'Formato no permitido. Usa JPG, PNG o WebP.',
+  // Challenge reference image
+  challengeImage: 'Imagen de referencia',
+  challengeImageHint:
+    'Opcional. Se muestra al jugador en la pantalla del desafío. JPG, PNG o WebP, hasta 5 MB.',
   categories: 'Categorías',
   category: 'Categoría',
   addCategory: 'Agregar categoría',

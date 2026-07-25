@@ -197,6 +197,7 @@ export interface Challenge {
   is_riddle: boolean
   keyword?: string | null
   fun_fact?: string | null
+  image_url?: string | null
   options: Option[]
   translations: Record<string, { prompt: string }>
 }

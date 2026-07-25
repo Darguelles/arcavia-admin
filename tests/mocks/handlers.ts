@@ -353,8 +353,42 @@ export const handlers = [
 
   http.post(`${BASE}/api/v1/admin/waypoints/:id/challenges`, async ({ params, request }) => {
     const body = (await request.json()) as Record<string, unknown>
-    return HttpResponse.json({ id: 'ch-1', waypoint_id: params['id'], ...body }, { status: 201 })
+    return HttpResponse.json(
+      { id: 'ch-1', waypoint_id: params['id'], image_url: null, ...body },
+      { status: 201 }
+    )
   }),
+
+  // Reference image — raw image bytes in, challenge with image_url out.
+  http.put(`${BASE}/api/v1/admin/challenges/:id/image`, ({ params }) =>
+    HttpResponse.json({
+      id: params['id'],
+      waypoint_id: 'wp-1',
+      prompt: 'Q',
+      order_index: 0,
+      is_riddle: false,
+      keyword: null,
+      fun_fact: null,
+      image_url: 'http://localhost:8000/media/challenges/ch-1/abc.jpg',
+      options: [],
+      translations: {},
+    })
+  ),
+
+  http.delete(`${BASE}/api/v1/admin/challenges/:id/image`, ({ params }) =>
+    HttpResponse.json({
+      id: params['id'],
+      waypoint_id: 'wp-1',
+      prompt: 'Q',
+      order_index: 0,
+      is_riddle: false,
+      keyword: null,
+      fun_fact: null,
+      image_url: null,
+      options: [],
+      translations: {},
+    })
+  ),
 
   // QR (per waypoint) — 404 means "no QR yet"
   http.get(`${BASE}/api/v1/admin/waypoints/:id/qr`, () =>

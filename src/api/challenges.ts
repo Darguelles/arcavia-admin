@@ -39,3 +39,23 @@ export function useDeleteChallenge(waypointId: string, challengeId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: challengeKeys.byWaypoint(waypointId) }),
   })
 }
+
+// Reference image — the bytes go straight to the API (raw body); it stores them
+// via the configured backend (local disk in dev, S3 in prod) and returns the
+// challenge with its new image_url, shown on the player's DESAFIO screen.
+export function useUploadChallengeImage(waypointId: string, challengeId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (file: File) =>
+      apiClient.upload<Challenge>(`/api/v1/admin/challenges/${challengeId}/image`, file),
+    onSuccess: () => qc.invalidateQueries({ queryKey: challengeKeys.byWaypoint(waypointId) }),
+  })
+}
+
+export function useDeleteChallengeImage(waypointId: string, challengeId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiClient.delete<Challenge>(`/api/v1/admin/challenges/${challengeId}/image`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: challengeKeys.byWaypoint(waypointId) }),
+  })
+}
