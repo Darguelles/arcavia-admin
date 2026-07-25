@@ -201,6 +201,7 @@ export function MissionEditor() {
             <FormField
               as="input"
               label={t.rewardPoints}
+              hint={t.rewardPointsHint}
               type="number"
               min={0}
               error={errors.reward_points?.message}
@@ -338,6 +339,7 @@ export function MissionEditor() {
               <FormField
                 as="input"
                 label={t.rewardPoints}
+                hint={t.rewardPointsHint}
                 type="number"
                 min={0}
                 error={detailsForm.formState.errors.reward_points?.message}

@@ -153,7 +153,9 @@ export const t = {
   difficultyBaja: 'Baja',
   difficultyMedia: 'Media',
   difficultyAlta: 'Alta',
-  rewardPoints: 'Puntos de recompensa',
+  rewardPoints: 'Bono de finalización',
+  rewardPointsHint:
+    'Puntos extra otorgados al completar toda la misión, además de los puntos que suma cada punto de control.',
   estimatedTime: 'Tiempo estimado (min)',
   explorers: 'Exploradores',
   detailsSection: 'Detalles',
