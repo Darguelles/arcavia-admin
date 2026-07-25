@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from './client'
-import type { User, UserDetail, PasswordResetResponse, Page } from './types'
+import type { User, UserDetail, PasswordResetResponse, ResetProgressSummary, Page } from './types'
 
 export const userKeys = {
   all: ['users'] as const,
@@ -33,6 +33,20 @@ export function useResetUserPassword(userId: string) {
   return useMutation({
     mutationFn: () =>
       apiClient.post<PasswordResetResponse>(`/api/v1/admin/users/${userId}/reset-password`),
+  })
+}
+
+/** Wipe ALL of a user's gameplay progress (testing tool). Invalidates the
+ *  detail so completions/points refresh to empty. */
+export function useResetUserProgress(userId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiClient.post<ResetProgressSummary>(`/api/v1/admin/users/${userId}/reset-progress`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: userKeys.detail(userId) })
+      qc.invalidateQueries({ queryKey: userKeys.all })
+    },
   })
 }
 

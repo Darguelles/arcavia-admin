@@ -72,4 +72,44 @@ describe('ReviewQueuePage', () => {
       expect(screen.getByText(t.rejectConfirm)).toBeInTheDocument()
     })
   })
+
+  it('shows a pending badge and action buttons for an unreviewed attempt', async () => {
+    render(<Wrapper />)
+    await waitFor(() => screen.getByText('Arco Colonial'))
+    expect(screen.getByText(t.reviewPending)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: t.approve })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: t.reject })).toBeInTheDocument()
+  })
+
+  it('shows the outcome and hides the actions once an attempt is reviewed', async () => {
+    server.use(
+      http.get('http://localhost:8000/api/v1/admin/geo-attempts', () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: 'attempt-2',
+              user_id: 'user-xyz98765',
+              waypoint_id: 'wp-1',
+              waypoint_name: 'Puente Viejo',
+              city_id: 'city-1',
+              status: 'failed',
+              accepted_fixes: 5,
+              best_accuracy_m: 8,
+              worst_accuracy_m: 12,
+              flags: ['zero_jitter'],
+              created_at: '2026-07-01T10:00:00Z',
+              reviewed_at: '2026-07-02T10:00:00Z',
+            },
+          ],
+          limit: 20,
+          offset: 0,
+        })
+      )
+    )
+    render(<Wrapper />)
+    await waitFor(() => screen.getByText('Puente Viejo'))
+    expect(screen.getByText(t.reviewRejected)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: t.approve })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: t.reject })).not.toBeInTheDocument()
+  })
 })

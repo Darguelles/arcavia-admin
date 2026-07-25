@@ -413,6 +413,17 @@ export const handlers = [
     return HttpResponse.json({ temp_password: 'TempPass123!' })
   }),
 
+  http.post(`${BASE}/api/v1/admin/users/:id/reset-progress`, () => {
+    return HttpResponse.json({
+      missions: 2,
+      waypoints: 5,
+      categories: 3,
+      answers: 4,
+      geo_attempts: 6,
+      rewards: 1,
+    })
+  }),
+
   http.patch(`${BASE}/api/v1/admin/users/:id`, async ({ params, request }) => {
     const body = (await request.json()) as Record<string, unknown>
     return HttpResponse.json({ id: params['id'], ...body })

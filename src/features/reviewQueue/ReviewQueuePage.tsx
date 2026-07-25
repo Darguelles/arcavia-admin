@@ -11,6 +11,17 @@ import type { GeoAttempt } from '../../api/types'
 const LIMIT = 20
 
 /**
+ * Review outcome shown in the queue. Approve leaves the attempt's status intact
+ * (still `passed`); reject flips it to `failed`. Unreviewed rows are pending.
+ */
+function reviewOutcome(a: GeoAttempt): { label: string; className: string } {
+  if (!a.reviewed_at) return { label: t.reviewPending, className: 'bg-amber-100 text-amber-800' }
+  if (a.status === 'failed')
+    return { label: t.reviewRejected, className: 'bg-red-100 text-red-700' }
+  return { label: t.reviewApproved, className: 'bg-green-100 text-green-700' }
+}
+
+/**
  * Operator review queue for geo check-in attempts the anti-cheat heuristics
  * flagged (frozen coordinates, constant accuracy, etc.) — never auto-rejected,
  * a human resolves them here. Reject is flag-only for audit/ban purposes; it
@@ -64,39 +75,43 @@ export function ReviewQueuePage() {
       cell: ({ getValue }) => new Date(String(getValue())).toLocaleString(),
     },
     {
-      header: 'Estado',
+      header: 'Revisión',
       id: 'reviewed',
-      cell: ({ row }) => (
-        <span
-          className={`px-2 py-0.5 rounded text-xs font-medium ${
-            row.original.reviewed_at ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-          }`}
-        >
-          {row.original.reviewed_at ? t.reviewed : t.notReviewed}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const o = reviewOutcome(row.original)
+        return (
+          <span className={`px-2 py-0.5 rounded text-xs font-medium ${o.className}`}>
+            {o.label}
+          </span>
+        )
+      },
     },
     {
       header: 'Acciones',
       id: 'actions',
-      cell: ({ row }) => (
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setTarget({ attempt: row.original, action: 'approve' })}
-            className="px-3 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg"
-          >
-            {t.approve}
-          </button>
-          <button
-            type="button"
-            onClick={() => setTarget({ attempt: row.original, action: 'reject' })}
-            className="px-3 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg"
-          >
-            {t.reject}
-          </button>
-        </div>
-      ),
+      // Once an attempt is resolved it shows its outcome above; drop the buttons
+      // so the operator can see at a glance that it's already been handled.
+      cell: ({ row }) =>
+        row.original.reviewed_at ? (
+          <span className="text-xs text-gray-400">—</span>
+        ) : (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setTarget({ attempt: row.original, action: 'approve' })}
+              className="px-3 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg"
+            >
+              {t.approve}
+            </button>
+            <button
+              type="button"
+              onClick={() => setTarget({ attempt: row.original, action: 'reject' })}
+              className="px-3 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg"
+            >
+              {t.reject}
+            </button>
+          </div>
+        ),
     },
   ]
 

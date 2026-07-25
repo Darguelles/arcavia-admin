@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useUser, useResetUserPassword, useToggleUserActive } from '../../api/users'
+import {
+  useUser,
+  useResetUserPassword,
+  useToggleUserActive,
+  useResetUserProgress,
+} from '../../api/users'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
 import { t } from '../../lib/i18n'
@@ -18,9 +23,11 @@ export function UserDetail() {
   const { data: user, isLoading } = useUser(id ?? '')
   const resetPassword = useResetUserPassword(id ?? '')
   const toggleActive = useToggleUserActive(id ?? '')
+  const resetProgress = useResetUserProgress(id ?? '')
 
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [showToggleConfirm, setShowToggleConfirm] = useState(false)
+  const [showResetProgressConfirm, setShowResetProgressConfirm] = useState(false)
   const [tempPassword, setTempPassword] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
@@ -45,6 +52,18 @@ export function UserDetail() {
       toast.error(t.error)
     } finally {
       setShowToggleConfirm(false)
+    }
+  }
+
+  async function handleResetProgress() {
+    if (!user) return
+    try {
+      await resetProgress.mutateAsync()
+      toast.success(t.resetProgressDone)
+    } catch {
+      toast.error(t.error)
+    } finally {
+      setShowResetProgressConfirm(false)
     }
   }
 
@@ -171,7 +190,17 @@ export function UserDetail() {
           >
             {user.is_active ? t.deactivate : t.activate}
           </button>
+          <button
+            type="button"
+            onClick={() => setShowResetProgressConfirm(true)}
+            className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg"
+          >
+            {t.resetProgress}
+          </button>
         </div>
+        <p className="text-xs text-gray-400 mt-3">
+          «{t.resetProgress}» borra todo el progreso del jugador para volver a probar desde cero.
+        </p>
       </div>
 
       {/* Reset password confirm */}
@@ -198,6 +227,18 @@ export function UserDetail() {
         onConfirm={handleToggle}
         onCancel={() => setShowToggleConfirm(false)}
         loading={toggleActive.isPending}
+      />
+
+      {/* Reset progress confirm (testing tool — destructive, no undo) */}
+      <ConfirmDialog
+        open={showResetProgressConfirm}
+        title={t.resetProgress}
+        message={t.resetProgressConfirm(user.email)}
+        confirmLabel={t.resetProgress}
+        variant="danger"
+        onConfirm={handleResetProgress}
+        onCancel={() => setShowResetProgressConfirm(false)}
+        loading={resetProgress.isPending}
       />
 
       {/* One-time temp password reveal (spec §6.7, §10) */}

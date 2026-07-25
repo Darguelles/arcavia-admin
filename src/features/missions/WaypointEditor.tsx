@@ -1,20 +1,32 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { useMission } from '../../api/missions'
 import { useCity } from '../../api/cities'
 import { useCategories } from '../../api/categories'
-import { useWaypoint, useCreateWaypoint, useUpdateWaypoint } from '../../api/waypoints'
-import { waypointSchema, type WaypointForm } from '../../lib/validation'
+import {
+  useWaypoint,
+  useCreateWaypoint,
+  useUpdateWaypoint,
+  waypointKeys,
+} from '../../api/waypoints'
+import {
+  waypointSchema,
+  challengeSchema,
+  type WaypointForm,
+  type ChallengeFormItem,
+} from '../../lib/validation'
 import { FormField } from '../../components/FormField'
 import { MapPicker } from '../../components/MapPicker'
 import { TranslationsEditor } from '../../components/TranslationsEditor'
 import { useToast } from '../../components/Toast'
-import { ChallengesEditor } from './ChallengesEditor'
+import { ChallengesEditor, DraftChallenges, challengeFormToCreate } from './ChallengesEditor'
 import { QRSection } from './QRSection'
 import { t } from '../../lib/i18n'
-import { ApiClientError } from '../../api/client'
+import { apiClient, ApiClientError } from '../../api/client'
+import type { Challenge, Waypoint } from '../../api/types'
 
 export function WaypointEditor() {
   const { missionId, waypointId } = useParams<{ missionId: string; waypointId?: string }>()
@@ -32,6 +44,15 @@ export function WaypointEditor() {
   const phaseId = isEdit ? (waypoint?.phase_id ?? '') : (searchParams.get('phaseId') ?? '')
   const createWaypoint = useCreateWaypoint(phaseId)
   const updateWaypoint = useUpdateWaypoint(waypointId ?? '', phaseId)
+  const queryClient = useQueryClient()
+
+  // On create, questions are buffered here and flushed once the waypoint exists,
+  // so a single Save builds the whole point (and can activate it right away).
+  const [drafts, setDrafts] = useState<ChallengeFormItem[]>([])
+  const [activeNeedsQuestion, setActiveNeedsQuestion] = useState(false)
+  useEffect(() => {
+    if (drafts.length > 0) setActiveNeedsQuestion(false)
+  }, [drafts])
 
   const {
     register,
@@ -101,17 +122,59 @@ export function WaypointEditor() {
   const requiresKeyword = watch('requires_keyword')
 
   async function onSubmit(data: WaypointForm) {
-    try {
-      if (isEdit) {
+    if (isEdit) {
+      try {
         await updateWaypoint.mutateAsync(data)
         toast.success(t.saved)
-      } else {
-        const created = await createWaypoint.mutateAsync(data)
-        toast.success(t.created)
-        navigate(`/admin/missions/${missionId}/waypoints/${created.id}`)
+      } catch (err) {
+        toast.error(err instanceof ApiClientError ? err.message : t.error)
       }
+      return
+    }
+
+    // ── Create: one Save orchestrates create → questions → activate ──────────
+    // The backend forces a new waypoint inactive and refuses to activate one
+    // with no questions, so create it inactive, flush the buffered questions,
+    // then flip it active — mirroring the guard here for an instant message.
+    if (data.is_active && drafts.length === 0) {
+      setActiveNeedsQuestion(true)
+      toast.error(t.waypointNoChallengesHint)
+      return
+    }
+    if (drafts.some((q) => !challengeSchema.safeParse(q).success)) {
+      toast.error(t.reviewQuestions)
+      return
+    }
+
+    let created: Waypoint
+    try {
+      created = await createWaypoint.mutateAsync({ ...data, is_active: false })
     } catch (err) {
       toast.error(err instanceof ApiClientError ? err.message : t.error)
+      return
+    }
+
+    try {
+      let order = 0
+      for (const q of drafts) {
+        await apiClient.post<Challenge>(
+          `/api/v1/admin/waypoints/${created.id}/challenges`,
+          challengeFormToCreate({ ...q, order_index: order++ })
+        )
+      }
+      if (data.is_active) {
+        await apiClient.patch<Waypoint>(`/api/v1/admin/waypoints/${created.id}`, {
+          is_active: true,
+        })
+      }
+      toast.success(t.created)
+    } catch (err) {
+      // The point exists but a follow-up step failed — surface it and hand off
+      // to the edit screen so the operator can finish instead of losing work.
+      toast.error(err instanceof ApiClientError ? err.message : t.error)
+    } finally {
+      queryClient.invalidateQueries({ queryKey: waypointKeys.byPhase(phaseId) })
+      navigate(`/admin/missions/${missionId}/waypoints/${created.id}`)
     }
   }
 
@@ -316,7 +379,12 @@ export function WaypointEditor() {
             <label htmlFor="wp_active" className="text-sm font-medium text-gray-700">
               {t.active}
             </label>
-            <span className="text-xs text-gray-400">{t.waypointNoChallengesHint}</span>
+            <span
+              className={activeNeedsQuestion ? 'text-xs text-red-600' : 'text-xs text-gray-400'}
+              role={activeNeedsQuestion ? 'alert' : undefined}
+            >
+              {t.waypointNoChallengesHint}
+            </span>
           </div>
 
           <Controller
@@ -334,24 +402,35 @@ export function WaypointEditor() {
             )}
           />
         </div>
-
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(`/admin/missions/${missionId}`)}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            {t.cancel}
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting || (isEdit && !isDirty)}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
-          >
-            {isSubmitting ? t.loading : isEdit ? t.save : t.create}
-          </button>
-        </div>
       </form>
+
+      {/* On create, questions are added inline and saved together with the
+          point below — no separate "save, come back, then activate" step. */}
+      {!isEdit && (
+        <section className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="font-semibold text-gray-800">{t.questions}</h3>
+          <p className="text-xs text-gray-400 mt-0.5 mb-4">{t.questionsHint}</p>
+          <DraftChallenges onChange={setDrafts} />
+        </section>
+      )}
+
+      <div className="flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={() => navigate(`/admin/missions/${missionId}`)}
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+        >
+          {t.cancel}
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit(onSubmit)}
+          disabled={isSubmitting || (isEdit && !isDirty)}
+          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+        >
+          {isSubmitting ? t.loading : isEdit ? t.save : t.create}
+        </button>
+      </div>
 
       {/* Challenges + QR only make sense once the waypoint exists */}
       {isEdit && waypointId && (

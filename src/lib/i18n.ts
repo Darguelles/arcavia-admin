@@ -75,6 +75,10 @@ export const t = {
     `Desactivar a ${email} impedirá que inicie sesión. Sus datos se conservan. ¿Continuar?`,
   activateUserConfirm: (email: string) =>
     `Activar a ${email} permitirá que vuelva a iniciar sesión. ¿Continuar?`,
+  resetProgress: 'Reiniciar progreso',
+  resetProgressConfirm: (email: string) =>
+    `Se borrará TODO el progreso de ${email}: misiones, puntos de control, respuestas, intentos de ubicación y recompensas. También se ajustan el ranking y los contadores. No se puede deshacer. ¿Continuar?`,
+  resetProgressDone: 'Progreso reiniciado. El usuario empieza desde cero.',
 
   // Mission activation guard (spec §5.1)
   missionNoQuestionsHint: 'Agrega al menos una pregunta antes de activar esta misión.',
@@ -133,6 +137,9 @@ export const t = {
   optionText: 'Texto de la opción',
   correctOption: 'Opción correcta',
   noQuestionsYet: 'Este punto aún no tiene preguntas. Agrega al menos una para activarlo.',
+  questionsHint: 'Agrega las preguntas de este punto. Se guardan junto con el punto.',
+  reviewQuestions:
+    'Revisa las preguntas: cada una necesita un enunciado, al menos 2 opciones y una correcta.',
   minTwoOptions: 'Cada pregunta debe tener al menos 2 opciones.',
   mustMarkCorrect: 'Debes marcar una opción como correcta.',
   riddle: 'Es un acertijo',
@@ -232,6 +239,9 @@ export const t = {
     'Esto marca el intento como rechazado para fines de auditoría. NO revierte el progreso ni los puntos que el jugador ya obtuvo. ¿Continuar?',
   reviewed: 'Revisado',
   notReviewed: 'Sin revisar',
+  reviewPending: 'Pendiente',
+  reviewApproved: 'Aprobado',
+  reviewRejected: 'Rechazado',
 
   // Toasts
   saved: 'Guardado correctamente.',

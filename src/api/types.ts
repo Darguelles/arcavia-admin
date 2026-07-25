@@ -251,6 +251,15 @@ export interface PasswordResetResponse {
   temp_password: string
 }
 
+export interface ResetProgressSummary {
+  missions: number
+  waypoints: number
+  categories: number
+  answers: number
+  geo_attempts: number
+  rewards: number
+}
+
 // Settings
 
 export interface Setting {
