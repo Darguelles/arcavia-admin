@@ -235,17 +235,94 @@ export interface User {
   force_password_reset: boolean
 }
 
-export interface UserDetail extends User {
-  completions: MissionCompletion[]
-  points_per_city: Record<string, number>
+// Full lifecycle overview (GET /admin/users/:id/overview). Field names mirror the
+// backend AdminUserOverview wire shape (snake_case), read directly by UserDetail.
+
+export interface UserOverviewProfile {
+  id: string
+  email: string
+  display_name: string
+  avatar_url: string | null
+  locale: string
+  role: Role
+  birth_date: string | null
+  is_active: boolean
+  force_password_reset: boolean
+  consent_at: string | null
+  consent_version: string | null
+  is_deleted: boolean
+  deleted_at: string | null
+  created_at: string
+  updated_at: string
+  last_activity_at: string | null
 }
 
-export interface MissionCompletion {
+export interface CategoryProgress {
+  category_id: string
+  name: string
+  points_earned: number
+  total_points: number
+  threshold_pct: number
+  earned_pct: number
+  met: boolean
+}
+
+export interface MissionProgress {
   mission_id: string
   mission_name: string
-  city_name: string
-  completed_at: string
+  city_id: string | null
+  city_name: string | null
+  status: string
+  riddle_solved: boolean
+  checkpoint_points: number
+  bonus_points: number
+  waypoints_completed: number
+  waypoints_total: number
+  completed_at: string | null
+  categories: CategoryProgress[]
+}
+
+export interface CityPoints {
+  city_id: string | null
+  city_name: string | null
   points: number
+}
+
+export interface EarnedReward {
+  reward_id: string
+  name: string
+  description: string
+  image_url: string | null
+  validity_starts_at: string
+  validity_ends_at: string
+  earned_at: string
+  currently_valid: boolean
+}
+
+export interface UserSession {
+  id: string
+  browser: string | null
+  os: string | null
+  device_type: string | null
+  ip_masked: string | null
+  ip_country: string | null
+  created_at: string
+  last_seen_at: string
+}
+
+export interface UserOverview {
+  profile: UserOverviewProfile
+  is_anonymized: boolean
+  total_points: number
+  checkpoint_points: number
+  bonus_points: number
+  missions_started: number
+  missions_completed: number
+  challenges_completed: number
+  points_by_city: CityPoints[]
+  missions: MissionProgress[]
+  rewards: EarnedReward[]
+  recent_sessions: UserSession[]
 }
 
 export interface PasswordResetResponse {

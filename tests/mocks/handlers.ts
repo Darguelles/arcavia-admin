@@ -408,7 +408,8 @@ export const handlers = [
     )
   }),
 
-  // Users
+  // Users — mocks mirror the REAL backend wire shape (UserAdmin uses created_at,
+  // the list adds derived last_activity_at; the detail page reads /overview).
   http.get(`${BASE}/api/v1/admin/users`, () => {
     return HttpResponse.json({
       items: [
@@ -416,11 +417,19 @@ export const handlers = [
           id: 'user-1',
           email: 'player@example.com',
           display_name: 'Juan Pérez',
+          avatar_url: null,
+          locale: 'es',
           role: 'player',
+          birth_date: '1995-06-15',
           is_active: true,
-          registered_at: '2024-01-15T10:00:00Z',
-          last_activity_at: '2024-06-20T14:30:00Z',
           force_password_reset: false,
+          consent_at: '2024-01-15T10:00:00Z',
+          consent_version: '1.0',
+          is_deleted: false,
+          deleted_at: null,
+          created_at: '2024-01-15T10:00:00Z',
+          updated_at: '2024-06-20T14:30:00Z',
+          last_activity_at: '2024-06-20T14:30:00Z',
         },
       ],
       total: 1,
@@ -429,22 +438,149 @@ export const handlers = [
     })
   }),
 
+  http.get(`${BASE}/api/v1/admin/users/:id/overview`, ({ params }) => {
+    return HttpResponse.json({
+      profile: {
+        id: params['id'],
+        email: 'player@example.com',
+        display_name: 'Juan Pérez',
+        avatar_url: null,
+        locale: 'es',
+        role: 'player',
+        birth_date: '1995-06-15',
+        is_active: true,
+        force_password_reset: false,
+        consent_at: '2024-01-15T10:00:00Z',
+        consent_version: '1.0',
+        is_deleted: false,
+        deleted_at: null,
+        created_at: '2024-01-15T10:00:00Z',
+        updated_at: '2024-06-20T14:30:00Z',
+        last_activity_at: '2024-06-20T14:30:00Z',
+      },
+      is_anonymized: false,
+      total_points: 350,
+      checkpoint_points: 250,
+      bonus_points: 100,
+      missions_started: 2,
+      missions_completed: 1,
+      challenges_completed: 8,
+      points_by_city: [{ city_id: 'city-1', city_name: 'Lima', points: 350 }],
+      missions: [
+        {
+          mission_id: 'm-1',
+          mission_name: 'Centro Histórico',
+          city_id: 'city-1',
+          city_name: 'Lima',
+          status: 'completed',
+          riddle_solved: true,
+          checkpoint_points: 150,
+          bonus_points: 100,
+          waypoints_completed: 3,
+          waypoints_total: 3,
+          completed_at: '2024-06-20T14:00:00Z',
+          categories: [
+            {
+              category_id: 'c-1',
+              name: 'Cultural',
+              points_earned: 150,
+              total_points: 150,
+              threshold_pct: 60,
+              earned_pct: 100,
+              met: true,
+            },
+          ],
+        },
+        {
+          mission_id: 'm-2',
+          mission_name: 'Miraflores',
+          city_id: 'city-1',
+          city_name: 'Lima',
+          status: 'in_progress',
+          riddle_solved: false,
+          checkpoint_points: 100,
+          bonus_points: 0,
+          waypoints_completed: 2,
+          waypoints_total: 5,
+          completed_at: null,
+          categories: [
+            {
+              category_id: 'c-2',
+              name: 'Patrocinador',
+              points_earned: 100,
+              total_points: 200,
+              threshold_pct: 60,
+              earned_pct: 50,
+              met: false,
+            },
+          ],
+        },
+      ],
+      rewards: [
+        {
+          reward_id: 'r-1',
+          name: 'Cupón Café',
+          description: '2x1 en bebidas',
+          image_url: null,
+          validity_starts_at: '2024-01-01T00:00:00Z',
+          validity_ends_at: '2025-12-31T00:00:00Z',
+          earned_at: '2024-06-20T14:00:00Z',
+          currently_valid: true,
+        },
+      ],
+      recent_sessions: [
+        {
+          id: 's-1',
+          browser: 'Chrome',
+          os: 'Android',
+          device_type: 'mobile',
+          ip_masked: '203.0.113.0',
+          ip_country: null,
+          created_at: '2024-06-20T14:00:00Z',
+          last_seen_at: '2024-06-20T14:30:00Z',
+        },
+      ],
+    })
+  }),
+
+  http.get(`${BASE}/api/v1/admin/users/:id/export`, ({ params }) => {
+    return HttpResponse.json({
+      exported_at: '2024-06-21T00:00:00Z',
+      note: 'export',
+      profile: { id: params['id'], email: 'player@example.com' },
+      is_anonymized: false,
+      total_points: 350,
+      answers: [],
+      sessions: [],
+    })
+  }),
+
   http.get(`${BASE}/api/v1/admin/users/:id`, ({ params }) => {
     return HttpResponse.json({
       id: params['id'],
       email: 'player@example.com',
       display_name: 'Juan Pérez',
+      avatar_url: null,
+      locale: 'es',
       role: 'player',
+      birth_date: '1995-06-15',
       is_active: true,
-      registered_at: '2024-01-15T10:00:00Z',
       force_password_reset: false,
-      completions: [],
-      points_per_city: { Lima: 350 },
+      consent_at: '2024-01-15T10:00:00Z',
+      consent_version: '1.0',
+      is_deleted: false,
+      deleted_at: null,
+      created_at: '2024-01-15T10:00:00Z',
+      updated_at: '2024-06-20T14:30:00Z',
+      last_activity_at: '2024-06-20T14:30:00Z',
     })
   }),
 
   http.post(`${BASE}/api/v1/admin/users/:id/reset-password`, () => {
-    return HttpResponse.json({ temp_password: 'TempPass123!' })
+    return HttpResponse.json({
+      temporary_password: 'TempPass123!',
+      message: 'Temporary password generated.',
+    })
   }),
 
   http.post(`${BASE}/api/v1/admin/users/:id/reset-progress`, () => {
@@ -458,9 +594,12 @@ export const handlers = [
     })
   }),
 
-  http.patch(`${BASE}/api/v1/admin/users/:id`, async ({ params, request }) => {
-    const body = (await request.json()) as Record<string, unknown>
-    return HttpResponse.json({ id: params['id'], ...body })
+  http.post(`${BASE}/api/v1/admin/users/:id/activate`, () => {
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.post(`${BASE}/api/v1/admin/users/:id/deactivate`, () => {
+    return new HttpResponse(null, { status: 204 })
   }),
 
   // Settings
