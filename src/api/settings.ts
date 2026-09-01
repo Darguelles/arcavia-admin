@@ -45,20 +45,25 @@ export function useTopScorers(cityId?: string) {
   })
 }
 
-export async function uploadAsset(file: File, key: string): Promise<string> {
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('key', key)
-
+/**
+ * Store an unattached image through the media seam and get its public URL back
+ * (`PUT /api/v1/admin/assets/{slug}`, raw body — the API takes no multipart).
+ * The caller persists the URL inside a settings value (branding logo, home
+ * sponsors). JPEG/PNG/WebP only, ≤5 MB — enforced server-side.
+ */
+export async function uploadAsset(file: File, slug: string): Promise<string> {
   const { useAuthStore } = await import('../auth/store')
   const { accessToken } = useAuthStore.getState()
   const { API_BASE } = await import('../config')
 
-  const res = await fetch(`${API_BASE}/api/v1/admin/assets`, {
-    method: 'POST',
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+  const res = await fetch(`${API_BASE}/api/v1/admin/assets/${slug}`, {
+    method: 'PUT',
+    headers: {
+      'content-type': file.type || 'application/octet-stream',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
     credentials: 'include',
-    body: formData,
+    body: file,
   })
   if (!res.ok) throw new Error('Error al subir el archivo')
   const data = await res.json()

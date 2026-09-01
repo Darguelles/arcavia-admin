@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useSetting, useUpdateSetting, uploadAsset } from '../../api/settings'
+import type { HomeContent, HomeSponsor } from '../../api/types'
 import { appInfoSchema, type AppInfoForm } from '../../lib/validation'
 import { FormField } from '../../components/FormField'
 import { TranslationsEditor } from '../../components/TranslationsEditor'
@@ -9,7 +10,7 @@ import { useToast } from '../../components/Toast'
 import { t } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 
-type Section = 'branding' | 'texts' | 'appinfo' | 'content'
+type Section = 'branding' | 'texts' | 'appinfo' | 'content' | 'home'
 
 function BrandingSection() {
   const toast = useToast()
@@ -62,7 +63,7 @@ function BrandingSection() {
             {uploading ? t.loading : 'Subir nuevo logo'}
           </button>
           <p className="text-xs text-gray-500">
-            PNG, JPG, SVG — máximo 2 MB. Se muestra en la app del jugador.
+            JPG, PNG o WebP — máximo 5 MB. Se muestra en la app del jugador.
           </p>
           <input
             ref={fileRef}
@@ -323,6 +324,249 @@ function PlainTextSetting({
   )
 }
 
+const inputClass =
+  'w-full rounded-lg border border-gray-300 p-2.5 text-sm text-gray-800 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500'
+
+function LabeledField({
+  label,
+  multiline = false,
+  rows = 3,
+  value,
+  onChange,
+}: {
+  label: string
+  multiline?: boolean
+  rows?: number
+  value: string
+  onChange: (value: string) => void
+}) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-sm font-medium text-gray-700">{label}</span>
+      {multiline ? (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={rows}
+          className={inputClass}
+        />
+      ) : (
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={inputClass}
+        />
+      )}
+    </label>
+  )
+}
+
+/**
+ * Editor for the `home_content` settings key — the operator-managed copy and
+ * sponsor banners of the player app's Home page. Empty fields are stripped on
+ * save; the player app hides the corresponding blocks.
+ */
+function HomeContentSection() {
+  const toast = useToast()
+  const { data, isLoading } = useSetting<HomeContent>('home_content')
+  const updateSetting = useUpdateSetting('home_content')
+  const [content, setContent] = useState<HomeContent>({})
+  const [sponsors, setSponsors] = useState<HomeSponsor[]>([])
+  const [seeded, setSeeded] = useState(false)
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!seeded && data) {
+      const value = (data.value as HomeContent | null) ?? {}
+      setContent(value)
+      setSponsors(value.sponsors ?? [])
+      setSeeded(true)
+    }
+  }, [data, seeded])
+
+  function setField(field: keyof Omit<HomeContent, 'sponsors'>, value: string) {
+    setContent((prev) => ({ ...prev, [field]: value }))
+  }
+
+  function setSponsor(index: number, patch: Partial<HomeSponsor>) {
+    setSponsors((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)))
+  }
+
+  async function handleSponsorImage(index: number, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingIndex(index)
+    try {
+      const url = await uploadAsset(file, 'home_sponsor')
+      setSponsor(index, { image_url: url })
+    } catch {
+      toast.error(t.error)
+    } finally {
+      setUploadingIndex(null)
+    }
+  }
+
+  async function handleSave() {
+    // Strip empty strings and imageless sponsor rows — the player app treats
+    // absent fields as "hide this block".
+    const trimmed = Object.fromEntries(
+      Object.entries(content)
+        .filter(([key]) => key !== 'sponsors')
+        .map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value])
+        .filter(([, value]) => value !== '')
+    )
+    const value: HomeContent = {
+      ...trimmed,
+      sponsors: sponsors
+        .filter((s) => s.image_url)
+        .map((s) => ({
+          name: s.name.trim(),
+          image_url: s.image_url,
+          ...(s.link_url?.trim() ? { link_url: s.link_url.trim() } : {}),
+        })),
+    }
+    try {
+      await updateSetting.mutateAsync(value)
+      toast.success(t.saved)
+    } catch {
+      toast.error(t.error)
+    }
+  }
+
+  if (isLoading) return <p className="text-gray-400">{t.loading}</p>
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+        <div>
+          <h3 className="font-semibold text-gray-800">{t.homeContent}</h3>
+          <p className="text-sm text-gray-500">{t.homeContentHint}</p>
+        </div>
+        <LabeledField
+          label={t.homeHeroIntro}
+          multiline
+          value={content.hero_intro ?? ''}
+          onChange={(v) => setField('hero_intro', v)}
+        />
+        <LabeledField
+          label={t.homeHeadlineBody}
+          multiline
+          value={content.headline_body ?? ''}
+          onChange={(v) => setField('headline_body', v)}
+        />
+        <div className="grid grid-cols-2 gap-4">
+          <LabeledField
+            label={t.homeLandmarkTitle}
+            value={content.landmark_title ?? ''}
+            onChange={(v) => setField('landmark_title', v)}
+          />
+          <LabeledField
+            label={t.homeSectionTitle}
+            value={content.section_title ?? ''}
+            onChange={(v) => setField('section_title', v)}
+          />
+        </div>
+        <LabeledField
+          label={t.homeLandmarkCaption}
+          multiline
+          rows={2}
+          value={content.landmark_caption ?? ''}
+          onChange={(v) => setField('landmark_caption', v)}
+        />
+        <LabeledField
+          label={t.homePlayIntro}
+          multiline
+          rows={2}
+          value={content.play_intro ?? ''}
+          onChange={(v) => setField('play_intro', v)}
+        />
+        <LabeledField
+          label={t.homePlayOutro}
+          multiline
+          rows={2}
+          value={content.play_outro ?? ''}
+          onChange={(v) => setField('play_outro', v)}
+        />
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+        <div>
+          <h3 className="font-semibold text-gray-800">{t.homeSponsors}</h3>
+          <p className="text-sm text-gray-500">{t.homeSponsorsHint}</p>
+        </div>
+
+        {sponsors.map((sponsor, index) => (
+          <div key={index} className="flex items-start gap-4 rounded-lg border border-gray-200 p-4">
+            {sponsor.image_url ? (
+              <img
+                src={sponsor.image_url}
+                alt={sponsor.name || 'Banner'}
+                className="h-16 w-28 shrink-0 rounded-md border border-gray-200 bg-gray-50 object-cover"
+              />
+            ) : (
+              <div className="h-16 w-28 shrink-0 flex items-center justify-center rounded-md border-2 border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400">
+                Sin imagen
+              </div>
+            )}
+            <div className="flex-1 grid grid-cols-2 gap-3">
+              <LabeledField
+                label={t.sponsorName}
+                value={sponsor.name}
+                onChange={(v) => setSponsor(index, { name: v })}
+              />
+              <LabeledField
+                label={t.sponsorLink}
+                value={sponsor.link_url ?? ''}
+                onChange={(v) => setSponsor(index, { link_url: v })}
+              />
+              <div className="col-span-2 flex items-center gap-3">
+                <label className="cursor-pointer px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg">
+                  {uploadingIndex === index ? t.loading : t.uploadImage}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    onChange={(e) => handleSponsorImage(index, e)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setSponsors((prev) => prev.filter((_, i) => i !== index))}
+                  className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200 rounded-lg"
+                >
+                  {t.remove}
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <div>
+          <button
+            type="button"
+            onClick={() => setSponsors((prev) => [...prev, { name: '', image_url: '' }])}
+            className="px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg"
+          >
+            {t.addSponsor}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={updateSetting.isPending}
+          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+        >
+          {updateSetting.isPending ? t.loading : t.save}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function ContentSection() {
   return (
     <div className="flex flex-col gap-6">
@@ -348,6 +592,7 @@ export function SettingsPage() {
     { key: 'texts', label: t.uiTexts },
     { key: 'appinfo', label: t.appInfo },
     { key: 'content', label: t.legalContent },
+    { key: 'home', label: t.homeContent },
   ]
 
   return (
@@ -377,6 +622,7 @@ export function SettingsPage() {
         {section === 'texts' && <UITextsSection />}
         {section === 'appinfo' && <AppInfoSection />}
         {section === 'content' && <ContentSection />}
+        {section === 'home' && <HomeContentSection />}
       </div>
     </div>
   )

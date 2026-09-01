@@ -122,6 +122,22 @@ export const t = {
     'Cómo jugar, ganar puntos y completar misiones. Se muestra en la app del jugador.',
   termsAndConditions: 'Términos y condiciones',
   termsAndConditionsHint: 'Texto legal que ven los jugadores desde el menú de información.',
+  homeContent: 'Página de inicio',
+  homeContentHint:
+    'Textos y patrocinadores de la página de inicio de la app del jugador. Los campos vacíos no se muestran.',
+  homeHeroIntro: 'Introducción (portada)',
+  homeHeadlineBody: 'Texto bajo el titular',
+  homeLandmarkTitle: 'Lugar destacado — título',
+  homeLandmarkCaption: 'Lugar destacado — descripción',
+  homeSectionTitle: 'Título de sección intermedia',
+  homePlayIntro: '«Juega y gana premios» — introducción',
+  homePlayOutro: '«Juega y gana premios» — cierre',
+  homeSponsors: 'Patrocinadores',
+  homeSponsorsHint:
+    'Banners que se muestran en la sección «Juega y gana premios». JPG, PNG o WebP — máximo 5 MB.',
+  sponsorName: 'Nombre del patrocinador',
+  sponsorLink: 'Enlace (opcional)',
+  addSponsor: 'Agregar patrocinador',
 
   // Dashboard
   activeCities: 'Ciudades activas',

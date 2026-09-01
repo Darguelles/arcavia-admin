@@ -1,14 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 // We test the activation guard logic on the MissionsPage list view
 // and on the MissionEditor details tab
-
-function makeQC() {
-  return new QueryClient({ defaultOptions: { queries: { retry: false } } })
-}
 
 // Test a standalone component that models the guard logic
 function ActiveToggle({ challengeCount }: { challengeCount: number }) {

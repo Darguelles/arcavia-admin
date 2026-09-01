@@ -345,6 +345,29 @@ export interface Setting {
   value: unknown
 }
 
+/**
+ * Value of the `home_content` settings key — operator-managed copy and sponsor
+ * banners for the player app's Home (landing) page. Every field is optional;
+ * the player app hides unset blocks. Hand-mirrored in
+ * arcavia-frontend/src/api/settings.ts — keep in sync.
+ */
+export interface HomeSponsor {
+  name: string
+  image_url: string
+  link_url?: string
+}
+
+export interface HomeContent {
+  hero_intro?: string
+  headline_body?: string
+  landmark_title?: string
+  landmark_caption?: string
+  section_title?: string
+  play_intro?: string
+  play_outro?: string
+  sponsors?: HomeSponsor[]
+}
+
 // Dashboard
 
 export interface DashboardStats {
