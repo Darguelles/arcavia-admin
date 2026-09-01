@@ -25,7 +25,9 @@ import { useToast } from '../../components/Toast'
 import { ChallengesEditor, DraftChallenges, challengeFormToCreate } from './ChallengesEditor'
 import { QRSection } from './QRSection'
 import { t } from '../../lib/i18n'
-import { apiClient, ApiClientError } from '../../api/client'
+import { translateApiError } from '../../lib/apiErrors'
+import { apiClient } from '../../api/client'
+import { categoryKeys } from '../../api/categories'
 import type { Challenge, Waypoint } from '../../api/types'
 
 export function WaypointEditor() {
@@ -42,8 +44,8 @@ export function WaypointEditor() {
 
   // Phase comes from the query on create, or the waypoint on edit.
   const phaseId = isEdit ? (waypoint?.phase_id ?? '') : (searchParams.get('phaseId') ?? '')
-  const createWaypoint = useCreateWaypoint(phaseId)
-  const updateWaypoint = useUpdateWaypoint(waypointId ?? '', phaseId)
+  const createWaypoint = useCreateWaypoint(phaseId, missionId)
+  const updateWaypoint = useUpdateWaypoint(waypointId ?? '', phaseId, missionId)
   const queryClient = useQueryClient()
 
   // On create, questions are buffered here and flushed once the waypoint exists,
@@ -127,7 +129,7 @@ export function WaypointEditor() {
         await updateWaypoint.mutateAsync(data)
         toast.success(t.saved)
       } catch (err) {
-        toast.error(err instanceof ApiClientError ? err.message : t.error)
+        toast.error(translateApiError(err))
       }
       return
     }
@@ -150,10 +152,11 @@ export function WaypointEditor() {
     try {
       created = await createWaypoint.mutateAsync({ ...data, is_active: false })
     } catch (err) {
-      toast.error(err instanceof ApiClientError ? err.message : t.error)
+      toast.error(translateApiError(err))
       return
     }
 
+    let followUpFailed = false
     try {
       let order = 0
       for (const q of drafts) {
@@ -171,11 +174,20 @@ export function WaypointEditor() {
     } catch (err) {
       // The point exists but a follow-up step failed — surface it and hand off
       // to the edit screen so the operator can finish instead of losing work.
-      toast.error(err instanceof ApiClientError ? err.message : t.error)
-    } finally {
-      queryClient.invalidateQueries({ queryKey: waypointKeys.byPhase(phaseId) })
-      navigate(`/admin/missions/${missionId}/waypoints/${created.id}`)
+      followUpFailed = true
+      toast.error(translateApiError(err))
     }
+    queryClient.invalidateQueries({ queryKey: waypointKeys.byPhase(phaseId) })
+    if (missionId) {
+      queryClient.invalidateQueries({ queryKey: categoryKeys.byMission(missionId) })
+    }
+    // On success, go straight back to the mission's phases tab — no detour
+    // through the waypoint edit screen.
+    navigate(
+      followUpFailed
+        ? `/admin/missions/${missionId}/waypoints/${created.id}`
+        : `/admin/missions/${missionId}?tab=fases`
+    )
   }
 
   if (isEdit && isLoading) return <p className="text-gray-400 p-6">{t.loading}</p>
@@ -190,7 +202,7 @@ export function WaypointEditor() {
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => navigate(`/admin/missions/${missionId}`)}
+          onClick={() => navigate(`/admin/missions/${missionId}?tab=fases`)}
           className="text-sm text-gray-500 hover:text-gray-700"
         >
           ← {t.back}
@@ -417,7 +429,7 @@ export function WaypointEditor() {
       <div className="flex justify-end gap-3">
         <button
           type="button"
-          onClick={() => navigate(`/admin/missions/${missionId}`)}
+          onClick={() => navigate(`/admin/missions/${missionId}?tab=fases`)}
           className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
         >
           {t.cancel}

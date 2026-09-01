@@ -21,6 +21,8 @@ function Wrapper({ initialEntry }: { initialEntry: string }) {
               path="/admin/missions/:missionId/waypoints/:waypointId"
               element={<WaypointEditor />}
             />
+            {/* Landing marker: a successful create returns to the mission's phases tab. */}
+            <Route path="/admin/missions/:missionId" element={<div>MISSION_SCREEN</div>} />
           </Routes>
         </ToastProvider>
       </QueryClientProvider>
@@ -182,5 +184,8 @@ describe('WaypointEditor — single-step create', () => {
 
     await waitFor(() => expect(questions).toHaveLength(1))
     await waitFor(() => expect(activated).toBe(true))
+    // Success hands the operator back to the mission (phases tab), not to the
+    // waypoint edit screen.
+    await waitFor(() => expect(screen.getByText('MISSION_SCREEN')).toBeInTheDocument())
   })
 })

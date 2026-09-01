@@ -127,11 +127,33 @@ export const t = {
     'Textos y patrocinadores de la página de inicio de la app del jugador. Los campos vacíos no se muestran.',
   homeHeroIntro: 'Introducción (portada)',
   homeHeadlineBody: 'Texto bajo el titular',
-  homeLandmarkTitle: 'Lugar destacado — título',
-  homeLandmarkCaption: 'Lugar destacado — descripción',
   homeSectionTitle: 'Título de sección intermedia',
   homePlayIntro: '«Juega y gana premios» — introducción',
   homePlayOutro: '«Juega y gana premios» — cierre',
+  homeHeadline: 'Titular principal (salto de línea = dos líneas)',
+  homeNeedSection: 'Tarjeta «Necesidad»',
+  homeSolutionSection: 'Tarjeta «Solución»',
+  homeHowSection: 'Tarjeta «Cómo Funciona»',
+  homeVisionSection: 'Sección «El mundo está listo»',
+  homeVisionPoints: 'Puntos (uno por línea)',
+  homeBandText: 'Banda dorada — texto',
+  homePlayTitle: 'Título «Juega y gana premios»',
+  homeClosingSection: 'Cierre de la página',
+  fieldTitle: 'Título',
+  fieldBody: 'Texto',
+  homeImages: 'Imágenes de la página',
+  homeImagesHint:
+    'Fotos que llenan los espacios reservados de la página de inicio. JPG, PNG o WebP — máximo 5 MB.',
+  homeHeroImage: 'Imagen de portada (bajo el logo)',
+  homeBrandMark: 'Marca / sello (tarjetas blancas)',
+  noImage: 'Sin imagen',
+  homeLandmarks: 'Carrusel de lugares destacados',
+  homeLandmarksHint:
+    'El jugador desliza entre estas imágenes (máximo 8). Título y descripción se muestran sobre cada foto. JPG, PNG o WebP — máximo 5 MB.',
+  landmarkTitle: 'Título',
+  landmarkCaption: 'Descripción (opcional)',
+  addLandmark: 'Agregar imagen',
+  landmarkLimitReached: 'Límite de 8 imágenes alcanzado.',
   homeSponsors: 'Patrocinadores',
   homeSponsorsHint:
     'Banners que se muestran en la sección «Juega y gana premios». JPG, PNG o WebP — máximo 5 MB.',
@@ -165,9 +187,12 @@ export const t = {
   minTwoOptions: 'Cada pregunta debe tener al menos 2 opciones.',
   mustMarkCorrect: 'Debes marcar una opción como correcta.',
   riddle: 'Es un acertijo',
+  riddleHint: 'Requisito para cerrar la misión: el jugador debe resolver al menos un acertijo.',
   keyword: 'Palabra clave',
-  keywordHint: 'Se revela al jugador cuando responde correctamente.',
+  keywordHint: 'Se revela al jugador solo cuando resuelve el acertijo correctamente.',
   funFact: 'Dato curioso',
+  funFactHint:
+    'Opcional. Se muestra al jugador al responder correctamente esta pregunta — sea acertijo o no.',
 
   // Mission structure (v2): difficulty, categories, phases, waypoints
   campaign: 'Campaña',
@@ -201,6 +226,7 @@ export const t = {
     'Opcional. Se muestra al jugador en la pantalla del desafío. JPG, PNG o WebP, hasta 5 MB.',
   categories: 'Categorías',
   category: 'Categoría',
+  categoryPlaceholder: 'Ej.: Punto Cultural, Patrocinador',
   addCategory: 'Agregar categoría',
   threshold: 'Umbral (%)',
   thresholdHint: 'Porcentaje de los puntos de la categoría necesario para completarla.',
@@ -218,6 +244,32 @@ export const t = {
   waypointNoChallengesHint: 'Agrega al menos una pregunta antes de activar este punto.',
   missionNotCompletableHint:
     'La misión necesita una estructura completable (categorías, fases y puntos activos con preguntas) antes de activarse.',
+  // Publication readiness (Estado de publicación)
+  publicationStatus: 'Estado de publicación',
+  activateMission: 'Activar misión',
+  missionActivated: 'Misión activada.',
+  missionActiveBadge: 'Misión activa',
+  checkHasCategories: 'Tiene al menos una categoría',
+  checkHasPhases: 'Tiene al menos una fase',
+  checkPhasesHaveActiveWaypoint: 'Cada fase tiene al menos un punto activo',
+  checkCategoriesHavePoints: 'Cada categoría suma puntos',
+  noPointsBadge: 'Sin puntos',
+  noActiveWaypointBadge: 'Sin punto activo',
+  riddleWarning:
+    'Ninguna pregunta está marcada como "Es un acertijo". El acertijo es la llave final de la misión: además de sumar los puntos de cada categoría, el jugador debe resolver un acertijo para completarla y cobrar el bono. Sin uno, nadie podrá terminar la misión — marca al menos una pregunta como acertijo.',
+  fixThis: 'Revisar',
+
+  // Backend error codes, translated (see src/lib/apiErrors.ts)
+  errMissionNeedsStructure: 'La misión necesita al menos una categoría y una fase para activarse.',
+  errPhaseNoActiveWaypoint: (name: string) => `La fase "${name}" no tiene ningún punto activo.`,
+  errCategoryNoPoints: (name: string) =>
+    `La categoría "${name}" no suma puntos. Activa al menos un punto suyo con puntos.`,
+  errCategoryInUse: 'La categoría tiene puntos asignados. Reasigna o elimina sus puntos primero.',
+  errPhaseInUse: 'La fase tiene puntos asignados. Elimina sus puntos primero.',
+  errInvalidOptions: 'Cada pregunta necesita al menos 2 opciones y una correcta.',
+  errKeywordRequired: 'La verificación por palabra clave necesita una pregunta y una respuesta.',
+  errCategoryMissionMismatch: 'La categoría seleccionada no pertenece a esta misión.',
+
   deleteCategoryConfirm: (name: string) =>
     `¿Eliminar la categoría "${name}"? Reasigna o elimina sus puntos primero.`,
   deletePhaseConfirm: (name: string) => `¿Eliminar la fase "${name}"? Elimina sus puntos primero.`,

@@ -7,8 +7,8 @@ import {
 } from '../../api/categories'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
-import { ApiClientError } from '../../api/client'
 import { t } from '../../lib/i18n'
+import { translateApiError } from '../../lib/apiErrors'
 import type { MissionCategory } from '../../api/types'
 
 export function CategoriesEditor({ missionId }: { missionId: string }) {
@@ -29,8 +29,8 @@ export function CategoriesEditor({ missionId }: { missionId: string }) {
       setName('')
       setThreshold(60)
       toast.success(t.created)
-    } catch {
-      toast.error(t.error)
+    } catch (err) {
+      toast.error(translateApiError(err))
     }
   }
 
@@ -63,7 +63,7 @@ export function CategoriesEditor({ missionId }: { missionId: string }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            placeholder={t.category}
+            placeholder={t.categoryPlaceholder}
           />
         </label>
         <label className="flex flex-col gap-1 w-28">
@@ -104,8 +104,8 @@ function CategoryRow({ missionId, category }: { missionId: string; category: Mis
     try {
       await update.mutateAsync({ name, threshold_pct: threshold })
       toast.success(t.saved)
-    } catch {
-      toast.error(t.error)
+    } catch (err) {
+      toast.error(translateApiError(err))
     }
   }
 
@@ -113,8 +113,8 @@ function CategoryRow({ missionId, category }: { missionId: string; category: Mis
     try {
       await del.mutateAsync()
       toast.success(t.deleted)
-    } catch (e) {
-      toast.error(e instanceof ApiClientError ? e.message : t.error)
+    } catch (err) {
+      toast.error(translateApiError(err))
     } finally {
       setConfirm(false)
     }
@@ -137,9 +137,20 @@ function CategoryRow({ missionId, category }: { missionId: string; category: Mis
         className="rounded-lg border border-gray-300 px-3 py-2 text-sm w-24"
         aria-label={t.threshold}
       />
-      <span className="text-xs text-gray-400 w-24 text-right" title={t.totalPoints}>
-        {category.total_points} pts
-      </span>
+      {category.total_points > 0 ? (
+        <span className="text-xs text-gray-400 w-24 text-right" title={t.totalPoints}>
+          {category.total_points} pts
+        </span>
+      ) : (
+        // 0 points blocks mission activation (the category's threshold would be
+        // unreachable) — make it look like the problem it is.
+        <span
+          className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 whitespace-nowrap"
+          title={t.totalPoints}
+        >
+          0 pts · {t.noPointsBadge}
+        </span>
+      )}
       <button
         type="button"
         onClick={save}

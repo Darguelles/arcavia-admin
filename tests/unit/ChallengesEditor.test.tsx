@@ -41,6 +41,24 @@ describe('ChallengesEditor (per waypoint)', () => {
     expect(screen.getByText('Pregunta 1')).toBeInTheDocument()
   })
 
+  it('decouples fun fact from the riddle: "Dato curioso" is always visible, "Palabra clave" only when the riddle box is checked', async () => {
+    const user = userEvent.setup()
+    render(
+      <Wrapper>
+        <ChallengesEditor waypointId="wp-1" />
+      </Wrapper>
+    )
+    await waitFor(() => screen.getByText('+ Agregar pregunta'))
+    await user.click(screen.getByText('+ Agregar pregunta'))
+
+    // Any question can carry a fun fact — no riddle required.
+    expect(screen.getByText('Dato curioso')).toBeInTheDocument()
+    expect(screen.queryByText('Palabra clave')).not.toBeInTheDocument()
+
+    await user.click(screen.getByLabelText(/Es un acertijo/))
+    expect(screen.getByText('Palabra clave')).toBeInTheDocument()
+  })
+
   it('shows at least 2 option fields for a new question', async () => {
     const user = userEvent.setup()
     render(

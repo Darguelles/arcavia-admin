@@ -4,8 +4,8 @@ import { usePhases, useCreatePhase, useUpdatePhase, useDeletePhase } from '../..
 import { useWaypoints, useDeleteWaypoint } from '../../api/waypoints'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
-import { ApiClientError } from '../../api/client'
 import { t } from '../../lib/i18n'
+import { translateApiError } from '../../lib/apiErrors'
 import type { Phase, Waypoint } from '../../api/types'
 
 export function PhasesEditor({
@@ -26,8 +26,8 @@ export function PhasesEditor({
       await create.mutateAsync({ name: name.trim(), order_index: phases?.length ?? 0 })
       setName('')
       toast.success(t.created)
-    } catch {
-      toast.error(t.error)
+    } catch (err) {
+      toast.error(translateApiError(err))
     }
   }
 
@@ -94,8 +94,8 @@ function PhaseCard({
     try {
       await update.mutateAsync({ name })
       toast.success(t.saved)
-    } catch {
-      toast.error(t.error)
+    } catch (err) {
+      toast.error(translateApiError(err))
     }
   }
 
@@ -103,8 +103,8 @@ function PhaseCard({
     try {
       await del.mutateAsync()
       toast.success(t.deleted)
-    } catch (e) {
-      toast.error(e instanceof ApiClientError ? e.message : t.error)
+    } catch (err) {
+      toast.error(translateApiError(err))
     } finally {
       setConfirm(false)
     }
@@ -119,6 +119,12 @@ function PhaseCard({
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium flex-1"
           aria-label={`${t.phase}: ${phase.name}`}
         />
+        {waypoints && !waypoints.some((w) => w.is_active) && (
+          // A phase without an active waypoint blocks mission activation.
+          <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 whitespace-nowrap">
+            {t.noActiveWaypointBadge}
+          </span>
+        )}
         <button
           type="button"
           onClick={save}
@@ -181,7 +187,7 @@ function WaypointRow({
   waypoint: Waypoint
 }) {
   const navigate = useNavigate()
-  const del = useDeleteWaypoint(waypoint.id, phaseId)
+  const del = useDeleteWaypoint(waypoint.id, phaseId, missionId)
   const toast = useToast()
   const [confirm, setConfirm] = useState(false)
 
@@ -189,8 +195,8 @@ function WaypointRow({
     try {
       await del.mutateAsync()
       toast.success(t.deactivated)
-    } catch {
-      toast.error(t.error)
+    } catch (err) {
+      toast.error(translateApiError(err))
     } finally {
       setConfirm(false)
     }

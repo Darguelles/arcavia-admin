@@ -69,13 +69,15 @@ export type CampaignForm = z.infer<typeof campaignSchema>
 
 const difficultyEnum = z.enum(['baja', 'media', 'alta'])
 
+// No is_active here: activation is a separate, explicit action (the "Activar
+// misión" button in MissionReadinessPanel), never a side effect of saving
+// details.
 export const missionDetailsSchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio').max(150),
   description: z.string().max(2000).optional().default(''),
   difficulty: difficultyEnum,
   reward_points: z.number().int().min(0).default(0),
   estimated_time_minutes: z.number().int().min(0).default(0),
-  is_active: z.boolean(),
   translations: translationsSchema.optional(),
 })
 export type MissionDetailsForm = z.infer<typeof missionDetailsSchema>

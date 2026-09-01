@@ -4,6 +4,7 @@ import { useWaypointQR, useGenerateQR, useToggleQRActive } from '../../api/qr'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
 import { t } from '../../lib/i18n'
+import { translateApiError } from '../../lib/apiErrors'
 
 interface QRSectionProps {
   waypointId: string
@@ -27,8 +28,8 @@ export function QRSection({ waypointId, waypointName, cityName }: QRSectionProps
     try {
       await generate.mutateAsync()
       toast.success('Código QR generado.')
-    } catch {
-      toast.error(t.error)
+    } catch (err) {
+      toast.error(translateApiError(err))
     }
   }
 
@@ -36,8 +37,8 @@ export function QRSection({ waypointId, waypointName, cityName }: QRSectionProps
     try {
       await toggle.mutateAsync(active)
       toast.success(active ? t.activated : t.deactivated)
-    } catch {
-      toast.error(t.error)
+    } catch (err) {
+      toast.error(translateApiError(err))
     } finally {
       setConfirmRetire(false)
     }

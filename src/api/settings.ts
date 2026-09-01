@@ -12,7 +12,7 @@ export const settingKeys = {
 export function useSetting<T = unknown>(key: string) {
   return useQuery({
     queryKey: settingKeys.key(key),
-    queryFn: () => apiClient.get<Setting>(`/api/v1/admin/settings/${key}`),
+    queryFn: () => apiClient.get<Setting & { value: T | null }>(`/api/v1/admin/settings/${key}`),
   })
 }
 

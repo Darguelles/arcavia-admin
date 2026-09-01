@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from './client'
+import { categoryKeys } from './categories'
 import type { Waypoint, WaypointCreate, WaypointUpdate } from './types'
 
 export const waypointKeys = {
@@ -23,16 +24,23 @@ export function useWaypoint(id: string) {
   })
 }
 
-export function useCreateWaypoint(phaseId: string) {
+// Every waypoint write can change its category's server-recomputed
+// total_points, so the mission's categories are invalidated alongside the
+// waypoint keys — otherwise the Categorías tab (and the readiness panel)
+// shows stale totals.
+export function useCreateWaypoint(phaseId: string, missionId?: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: WaypointCreate) =>
       apiClient.post<Waypoint>(`/api/v1/admin/phases/${phaseId}/waypoints`, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: waypointKeys.byPhase(phaseId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: waypointKeys.byPhase(phaseId) })
+      if (missionId) qc.invalidateQueries({ queryKey: categoryKeys.byMission(missionId) })
+    },
   })
 }
 
-export function useUpdateWaypoint(id: string, phaseId?: string) {
+export function useUpdateWaypoint(id: string, phaseId?: string, missionId?: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: WaypointUpdate) =>
@@ -40,14 +48,18 @@ export function useUpdateWaypoint(id: string, phaseId?: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: waypointKeys.detail(id) })
       if (phaseId) qc.invalidateQueries({ queryKey: waypointKeys.byPhase(phaseId) })
+      if (missionId) qc.invalidateQueries({ queryKey: categoryKeys.byMission(missionId) })
     },
   })
 }
 
-export function useDeleteWaypoint(id: string, phaseId: string) {
+export function useDeleteWaypoint(id: string, phaseId: string, missionId?: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () => apiClient.delete<void>(`/api/v1/admin/waypoints/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: waypointKeys.byPhase(phaseId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: waypointKeys.byPhase(phaseId) })
+      if (missionId) qc.invalidateQueries({ queryKey: categoryKeys.byMission(missionId) })
+    },
   })
 }

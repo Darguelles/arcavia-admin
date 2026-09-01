@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useSetting, useUpdateSetting, uploadAsset } from '../../api/settings'
-import type { HomeContent, HomeSponsor } from '../../api/types'
+import type { HomeContent, HomeSponsor, HomeStep, LandmarkSlide } from '../../api/types'
+import { HOME_DEFAULTS } from '../../lib/homeDefaults'
 import { appInfoSchema, type AppInfoForm } from '../../lib/validation'
 import { FormField } from '../../components/FormField'
 import { TranslationsEditor } from '../../components/TranslationsEditor'
@@ -83,7 +84,6 @@ function UITextsSection() {
   const { data: textsSetting, isLoading } = useSetting('ui_texts')
   const updateSetting = useUpdateSetting('ui_texts')
   const [translations, setTranslations] = useState<Record<string, Record<string, string>>>({})
-  const [saved, setSaved] = useState(false)
 
   const texts = (textsSetting?.value as Record<string, string> | undefined) ?? {}
 
@@ -91,7 +91,6 @@ function UITextsSection() {
     try {
       await updateSetting.mutateAsync({ texts, translations })
       toast.success(t.saved)
-      setSaved(true)
     } catch {
       toast.error(t.error)
     }
@@ -373,14 +372,50 @@ function HomeContentSection() {
   const updateSetting = useUpdateSetting('home_content')
   const [content, setContent] = useState<HomeContent>({})
   const [sponsors, setSponsors] = useState<HomeSponsor[]>([])
+  const [landmarks, setLandmarks] = useState<LandmarkSlide[]>([])
   const [seeded, setSeeded] = useState(false)
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null)
+  const [uploadingLandmark, setUploadingLandmark] = useState<number | null>(null)
+
+  const [steps, setSteps] = useState<HomeStep[]>([...HOME_DEFAULTS.how_steps])
+  const [visionText, setVisionText] = useState(HOME_DEFAULTS.vision_points.join('\n'))
 
   useEffect(() => {
     if (!seeded && data) {
       const value = (data.value as HomeContent | null) ?? {}
-      setContent(value)
+      // Pre-fill the defaulted blocks with the copy the player currently
+      // shows, so the operator edits the live text in place.
+      setContent({
+        headline: HOME_DEFAULTS.headline,
+        need_title: HOME_DEFAULTS.need_title,
+        need_body: HOME_DEFAULTS.need_body,
+        solution_title: HOME_DEFAULTS.solution_title,
+        solution_body: HOME_DEFAULTS.solution_body,
+        how_title: HOME_DEFAULTS.how_title,
+        vision_title: HOME_DEFAULTS.vision_title,
+        vision_intro: HOME_DEFAULTS.vision_intro,
+        band_text: HOME_DEFAULTS.band_text,
+        play_title: HOME_DEFAULTS.play_title,
+        closing_title: HOME_DEFAULTS.closing_title,
+        closing_body: HOME_DEFAULTS.closing_body,
+        ...value,
+      })
+      setSteps(HOME_DEFAULTS.how_steps.map((d, i) => ({ ...d, ...value.how_steps?.[i] })))
+      setVisionText((value.vision_points ?? HOME_DEFAULTS.vision_points).join('\n'))
       setSponsors(value.sponsors ?? [])
+      // Seed from the carousel list, or lift the pre-carousel single photo into it.
+      setLandmarks(
+        value.landmarks ??
+          (value.landmark_image_url
+            ? [
+                {
+                  image_url: value.landmark_image_url,
+                  title: value.landmark_title,
+                  caption: value.landmark_caption,
+                },
+              ]
+            : [])
+      )
       setSeeded(true)
     }
   }, [data, seeded])
@@ -407,17 +442,125 @@ function HomeContentSection() {
     }
   }
 
+  function setLandmark(index: number, patch: Partial<LandmarkSlide>) {
+    setLandmarks((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)))
+  }
+
+  async function handleLandmarkImage(index: number, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingLandmark(index)
+    try {
+      const url = await uploadAsset(file, 'home_landmark')
+      setLandmark(index, { image_url: url })
+    } catch {
+      toast.error(t.error)
+    } finally {
+      setUploadingLandmark(null)
+    }
+  }
+
+  type ImageField = 'hero_image_url' | 'brand_mark_url'
+  const [uploadingField, setUploadingField] = useState<ImageField | null>(null)
+
+  async function handleContentImage(
+    field: ImageField,
+    slug: string,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingField(field)
+    try {
+      const url = await uploadAsset(file, slug)
+      setContent((prev) => ({ ...prev, [field]: url }))
+    } catch {
+      toast.error(t.error)
+    } finally {
+      setUploadingField(null)
+    }
+  }
+
+  function imageRow(label: string, field: ImageField, slug: string) {
+    const url = content[field]
+    return (
+      <div className="flex items-center gap-4">
+        {url ? (
+          <img
+            src={url}
+            alt={label}
+            className="h-16 w-28 shrink-0 rounded-md border border-gray-200 bg-gray-50 object-cover"
+          />
+        ) : (
+          <div className="h-16 w-28 shrink-0 flex items-center justify-center rounded-md border-2 border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400">
+            {t.noImage}
+          </div>
+        )}
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium text-gray-700">{label}</span>
+          <div className="flex items-center gap-3">
+            <label className="cursor-pointer px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg">
+              {uploadingField === field ? t.loading : t.uploadImage}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={(e) => handleContentImage(field, slug, e)}
+              />
+            </label>
+            {url && (
+              <button
+                type="button"
+                onClick={() => setContent((prev) => ({ ...prev, [field]: '' }))}
+                className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200 rounded-lg"
+              >
+                {t.remove}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   async function handleSave() {
-    // Strip empty strings and imageless sponsor rows — the player app treats
-    // absent fields as "hide this block".
+    // Strip empty strings and imageless rows — the player app treats absent
+    // fields as "hide this block". The legacy single-landmark fields are
+    // dropped for good: the carousel list is their replacement.
+    const legacyKeys = [
+      'sponsors',
+      'landmarks',
+      'how_steps',
+      'vision_points',
+      'landmark_image_url',
+      'landmark_title',
+      'landmark_caption',
+    ]
     const trimmed = Object.fromEntries(
       Object.entries(content)
-        .filter(([key]) => key !== 'sponsors')
+        .filter(([key]) => !legacyKeys.includes(key))
         .map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value])
         .filter(([, value]) => value !== '')
     )
+    const visionPoints = visionText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
     const value: HomeContent = {
       ...trimmed,
+      how_steps: steps.map((s, i) => ({
+        title: s.title.trim() || HOME_DEFAULTS.how_steps[i].title,
+        body: s.body.trim() || HOME_DEFAULTS.how_steps[i].body,
+      })),
+      ...(visionPoints.length ? { vision_points: visionPoints } : {}),
+      landmarks: landmarks
+        .filter((s) => s.image_url)
+        .slice(0, 8)
+        .map((s) => ({
+          image_url: s.image_url,
+          ...(s.title?.trim() ? { title: s.title.trim() } : {}),
+          ...(s.caption?.trim() ? { caption: s.caption.trim() } : {}),
+        })),
       sponsors: sponsors
         .filter((s) => s.image_url)
         .map((s) => ({
@@ -450,29 +593,109 @@ function HomeContentSection() {
           onChange={(v) => setField('hero_intro', v)}
         />
         <LabeledField
+          label={t.homeHeadline}
+          multiline
+          rows={2}
+          value={content.headline ?? ''}
+          onChange={(v) => setField('headline', v)}
+        />
+        <LabeledField
           label={t.homeHeadlineBody}
           multiline
           value={content.headline_body ?? ''}
           onChange={(v) => setField('headline_body', v)}
         />
-        <div className="grid grid-cols-2 gap-4">
-          <LabeledField
-            label={t.homeLandmarkTitle}
-            value={content.landmark_title ?? ''}
-            onChange={(v) => setField('landmark_title', v)}
-          />
-          <LabeledField
-            label={t.homeSectionTitle}
-            value={content.section_title ?? ''}
-            onChange={(v) => setField('section_title', v)}
-          />
-        </div>
         <LabeledField
-          label={t.homeLandmarkCaption}
+          label={t.homeSectionTitle}
+          value={content.section_title ?? ''}
+          onChange={(v) => setField('section_title', v)}
+        />
+
+        <h4 className="pt-2 text-sm font-semibold text-gray-600">{t.homeNeedSection}</h4>
+        <LabeledField
+          label={t.fieldTitle}
+          value={content.need_title ?? ''}
+          onChange={(v) => setField('need_title', v)}
+        />
+        <LabeledField
+          label={t.fieldBody}
+          multiline
+          rows={4}
+          value={content.need_body ?? ''}
+          onChange={(v) => setField('need_body', v)}
+        />
+
+        <h4 className="pt-2 text-sm font-semibold text-gray-600">{t.homeSolutionSection}</h4>
+        <LabeledField
+          label={t.fieldTitle}
+          value={content.solution_title ?? ''}
+          onChange={(v) => setField('solution_title', v)}
+        />
+        <LabeledField
+          label={t.fieldBody}
+          multiline
+          rows={4}
+          value={content.solution_body ?? ''}
+          onChange={(v) => setField('solution_body', v)}
+        />
+
+        <h4 className="pt-2 text-sm font-semibold text-gray-600">{t.homeHowSection}</h4>
+        <LabeledField
+          label={t.fieldTitle}
+          value={content.how_title ?? ''}
+          onChange={(v) => setField('how_title', v)}
+        />
+        {steps.map((step, index) => (
+          <div key={index} className="grid grid-cols-[1fr_2fr] gap-3">
+            <LabeledField
+              label={`Paso ${index + 1} — ${t.fieldTitle.toLowerCase()}`}
+              value={step.title}
+              onChange={(v) =>
+                setSteps((prev) => prev.map((s, i) => (i === index ? { ...s, title: v } : s)))
+              }
+            />
+            <LabeledField
+              label={t.fieldBody}
+              value={step.body}
+              onChange={(v) =>
+                setSteps((prev) => prev.map((s, i) => (i === index ? { ...s, body: v } : s)))
+              }
+            />
+          </div>
+        ))}
+
+        <h4 className="pt-2 text-sm font-semibold text-gray-600">{t.homeVisionSection}</h4>
+        <LabeledField
+          label={t.fieldTitle}
+          value={content.vision_title ?? ''}
+          onChange={(v) => setField('vision_title', v)}
+        />
+        <LabeledField
+          label={t.fieldBody}
           multiline
           rows={2}
-          value={content.landmark_caption ?? ''}
-          onChange={(v) => setField('landmark_caption', v)}
+          value={content.vision_intro ?? ''}
+          onChange={(v) => setField('vision_intro', v)}
+        />
+        <LabeledField
+          label={t.homeVisionPoints}
+          multiline
+          rows={5}
+          value={visionText}
+          onChange={setVisionText}
+        />
+
+        <LabeledField
+          label={t.homeBandText}
+          multiline
+          rows={2}
+          value={content.band_text ?? ''}
+          onChange={(v) => setField('band_text', v)}
+        />
+        <LabeledField
+          label={t.homePlayTitle}
+          value={content.play_title ?? ''}
+          onChange={(v) => setField('play_title', v)}
         />
         <LabeledField
           label={t.homePlayIntro}
@@ -488,6 +711,94 @@ function HomeContentSection() {
           value={content.play_outro ?? ''}
           onChange={(v) => setField('play_outro', v)}
         />
+
+        <h4 className="pt-2 text-sm font-semibold text-gray-600">{t.homeClosingSection}</h4>
+        <LabeledField
+          label={t.fieldTitle}
+          value={content.closing_title ?? ''}
+          onChange={(v) => setField('closing_title', v)}
+        />
+        <LabeledField
+          label={t.fieldBody}
+          value={content.closing_body ?? ''}
+          onChange={(v) => setField('closing_body', v)}
+        />
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+        <div>
+          <h3 className="font-semibold text-gray-800">{t.homeImages}</h3>
+          <p className="text-sm text-gray-500">{t.homeImagesHint}</p>
+        </div>
+        {imageRow(t.homeHeroImage, 'hero_image_url', 'home_hero')}
+        {imageRow(t.homeBrandMark, 'brand_mark_url', 'home_brand')}
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+        <div>
+          <h3 className="font-semibold text-gray-800">{t.homeLandmarks}</h3>
+          <p className="text-sm text-gray-500">{t.homeLandmarksHint}</p>
+        </div>
+
+        {landmarks.map((slide, index) => (
+          <div key={index} className="flex items-start gap-4 rounded-lg border border-gray-200 p-4">
+            {slide.image_url ? (
+              <img
+                src={slide.image_url}
+                alt={slide.title || `Imagen ${index + 1}`}
+                className="h-24 w-16 shrink-0 rounded-md border border-gray-200 bg-gray-50 object-cover"
+              />
+            ) : (
+              <div className="h-24 w-16 shrink-0 flex items-center justify-center rounded-md border-2 border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400 text-center">
+                {t.noImage}
+              </div>
+            )}
+            <div className="flex-1 grid grid-cols-2 gap-3">
+              <LabeledField
+                label={t.landmarkTitle}
+                value={slide.title ?? ''}
+                onChange={(v) => setLandmark(index, { title: v })}
+              />
+              <LabeledField
+                label={t.landmarkCaption}
+                value={slide.caption ?? ''}
+                onChange={(v) => setLandmark(index, { caption: v })}
+              />
+              <div className="col-span-2 flex items-center gap-3">
+                <label className="cursor-pointer px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg">
+                  {uploadingLandmark === index ? t.loading : t.uploadImage}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    onChange={(e) => handleLandmarkImage(index, e)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setLandmarks((prev) => prev.filter((_, i) => i !== index))}
+                  className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200 rounded-lg"
+                >
+                  {t.remove}
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={landmarks.length >= 8}
+            onClick={() => setLandmarks((prev) => [...prev, { image_url: '' }])}
+            className="px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {t.addLandmark}
+          </button>
+          {landmarks.length >= 8 && (
+            <span className="text-xs text-gray-500">{t.landmarkLimitReached}</span>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">

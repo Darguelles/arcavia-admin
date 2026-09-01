@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type ChangeEvent } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   useMission,
   useCreateMission,
@@ -24,11 +24,26 @@ import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
 import { CategoriesEditor } from './CategoriesEditor'
 import { PhasesEditor } from './PhasesEditor'
+import { MissionReadinessPanel } from './MissionReadinessPanel'
 import { t } from '../../lib/i18n'
+import { translateApiError } from '../../lib/apiErrors'
 import { cn } from '../../lib/utils'
 import { ApiClientError } from '../../api/client'
 
 type Tab = 'details' | 'categories' | 'phases'
+
+// The active tab lives in the URL (?tab=…) so it survives remounts — e.g.
+// coming back from the waypoint editor lands on "Fases y puntos", not Detalles.
+const TAB_FROM_PARAM: Record<string, Tab> = {
+  detalles: 'details',
+  categorias: 'categories',
+  fases: 'phases',
+}
+const TAB_TO_PARAM: Record<Tab, string> = {
+  details: 'detalles',
+  categories: 'categorias',
+  phases: 'fases',
+}
 
 const DIFFICULTIES = [
   { value: 'baja', label: t.difficultyBaja },
@@ -41,7 +56,9 @@ export function MissionEditor() {
   const isEdit = !!id
   const navigate = useNavigate()
   const toast = useToast()
-  const [activeTab, setActiveTab] = useState<Tab>('details')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab: Tab = TAB_FROM_PARAM[searchParams.get('tab') ?? ''] ?? 'details'
+  const setActiveTab = (tab: Tab) => setSearchParams({ tab: TAB_TO_PARAM[tab] }, { replace: true })
   const [confirmDeactivate, setConfirmDeactivate] = useState(false)
 
   const { data: mission, isLoading } = useMission(id ?? '')
@@ -55,7 +72,6 @@ export function MissionEditor() {
   const createForm = useForm<MissionCreateForm>({
     resolver: zodResolver(missionCreateSchema),
     defaultValues: {
-      is_active: false,
       difficulty: 'media',
       reward_points: 0,
       estimated_time_minutes: 0,
@@ -66,7 +82,6 @@ export function MissionEditor() {
   const detailsForm = useForm<MissionDetailsForm>({
     resolver: zodResolver(missionDetailsSchema),
     defaultValues: {
-      is_active: false,
       difficulty: 'media',
       reward_points: 0,
       estimated_time_minutes: 0,
@@ -82,7 +97,6 @@ export function MissionEditor() {
         difficulty: mission.difficulty,
         reward_points: mission.reward_points,
         estimated_time_minutes: mission.estimated_time_minutes,
-        is_active: mission.is_active,
         translations: mission.translations ?? {},
       })
     }
@@ -92,14 +106,16 @@ export function MissionEditor() {
     try {
       const created = await createMission.mutateAsync(data)
       toast.success(t.created)
-      navigate(`/admin/missions/${created.id}`)
+      // Land on the natural next step: adding categories.
+      navigate(`/admin/missions/${created.id}?tab=categorias`)
     } catch (err) {
       if (err instanceof ApiClientError && err.details) {
         Object.entries(err.details).forEach(([field, msg]) =>
           createForm.setError(field as keyof MissionCreateForm, { message: String(msg) })
         )
+      } else {
+        toast.error(translateApiError(err))
       }
-      toast.error(t.error)
     }
   }
 
@@ -109,8 +125,7 @@ export function MissionEditor() {
       await updateMission.mutateAsync(data)
       toast.success(t.saved)
     } catch (err) {
-      // Activation can fail if the structure isn't completable (§8.4).
-      toast.error(err instanceof ApiClientError ? err.message : t.error)
+      toast.error(translateApiError(err))
     }
   }
 
@@ -282,6 +297,14 @@ export function MissionEditor() {
         )}
       </div>
 
+      {id && (
+        <MissionReadinessPanel
+          missionId={id}
+          isActive={mission?.is_active ?? false}
+          onNavigateTab={setActiveTab}
+        />
+      )}
+
       <div className="flex border-b border-gray-200 mb-6">
         {TABS.map((tab) => (
           <button
@@ -353,19 +376,6 @@ export function MissionEditor() {
                 error={detailsForm.formState.errors.estimated_time_minutes?.message}
                 {...detailsForm.register('estimated_time_minutes', { valueAsNumber: true })}
               />
-            </div>
-
-            <div className="flex items-center gap-3">
-              <input
-                id="mission_active"
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-indigo-600"
-                {...detailsForm.register('is_active')}
-              />
-              <label htmlFor="mission_active" className="text-sm font-medium text-gray-700">
-                {t.active}
-              </label>
-              <span className="text-xs text-gray-400">{t.missionNotCompletableHint}</span>
             </div>
 
             <Controller
@@ -450,7 +460,7 @@ function MissionImageSection({
       await uploadImage.mutateAsync(file)
       toast.success(t.imageUploaded)
     } catch (err) {
-      toast.error(err instanceof ApiClientError ? err.message : t.error)
+      toast.error(translateApiError(err))
     }
   }
 
@@ -459,7 +469,7 @@ function MissionImageSection({
       await removeImage.mutateAsync()
       toast.success(t.imageRemoved)
     } catch (err) {
-      toast.error(err instanceof ApiClientError ? err.message : t.error)
+      toast.error(translateApiError(err))
     }
   }
 

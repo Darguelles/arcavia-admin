@@ -23,7 +23,7 @@ import { FormField } from '../../components/FormField'
 import { TranslationsEditor } from '../../components/TranslationsEditor'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
-import { ApiClientError } from '../../api/client'
+import { translateApiError } from '../../lib/apiErrors'
 import { t } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 import type { Challenge, ChallengeCreate } from '../../api/types'
@@ -198,6 +198,10 @@ function ChallengeFormBody({
         )}
       </div>
 
+      {/* Fun fact — independent of the riddle: any question can reveal one on
+          a correct answer (the game engine already works this way). */}
+      <FormField as="input" label={t.funFact} hint={t.funFactHint} {...register('fun_fact')} />
+
       {/* Riddle */}
       <div className="flex flex-col gap-2">
         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
@@ -207,12 +211,10 @@ function ChallengeFormBody({
             {...register('is_riddle')}
           />
           {t.riddle}
+          <span className="text-xs font-normal text-gray-400">{t.riddleHint}</span>
         </label>
         {isRiddle && (
-          <div className="grid grid-cols-2 gap-3">
-            <FormField as="input" label={t.keyword} hint={t.keywordHint} {...register('keyword')} />
-            <FormField as="input" label={t.funFact} {...register('fun_fact')} />
-          </div>
+          <FormField as="input" label={t.keyword} hint={t.keywordHint} {...register('keyword')} />
         )}
       </div>
 
@@ -316,7 +318,7 @@ function ChallengeCard({
         toast.success(t.saved)
       }
     } catch (err) {
-      toast.error(err instanceof ApiClientError ? err.message : t.error)
+      toast.error(translateApiError(err))
     }
   }
 
@@ -329,7 +331,7 @@ function ChallengeCard({
       await del.mutateAsync()
       toast.success(t.deleted)
     } catch (err) {
-      toast.error(err instanceof ApiClientError ? err.message : t.error)
+      toast.error(translateApiError(err))
     } finally {
       setConfirm(false)
     }
@@ -544,7 +546,7 @@ function ChallengeImageSection({
       await uploadImage.mutateAsync(file)
       toast.success(t.imageUploaded)
     } catch (err) {
-      toast.error(err instanceof ApiClientError ? err.message : t.error)
+      toast.error(translateApiError(err))
     }
   }
 
@@ -553,7 +555,7 @@ function ChallengeImageSection({
       await removeImage.mutateAsync()
       toast.success(t.imageRemoved)
     } catch (err) {
-      toast.error(err instanceof ApiClientError ? err.message : t.error)
+      toast.error(translateApiError(err))
     }
   }
 
