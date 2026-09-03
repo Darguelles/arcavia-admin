@@ -1,18 +1,82 @@
 @import 'tailwindcss';
 @plugin "@tailwindcss/forms";
 
+/* Arcavia Admin — derivado de arcavia-frontend/src/index.css (Figma 1LfEMYlMFIbgsE6X4EbHIS).
+   La marca es la misma; el panel añade los tonos de taller que una
+   herramienta de operación necesita. Usa las clases semánticas, no el hex. */
+@theme {
+  --font-sans: 'Montserrat', ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* Marca — idénticos a la app del jugador */
+  --color-ink: #1f1a1e; /* rail, titulares, texto principal */
+  --color-ink-2: #3f3c3e; /* superficie sobre tinta, hover del rail */
+  --color-gold: #b19071; /* acento único */
+  --color-gold-soft: #c9ad92; /* hover del oro */
+  --color-cream: #ffebd9; /* texto sobre tinta */
+
+  /* Taller — solo panel */
+  --color-gold-deep: #8a6b4f; /* el oro como texto sobre papel */
+  --color-paper: #faf8f7; /* fondo del área de trabajo */
+  --color-surface: #ffffff; /* tablas, tarjetas, campos */
+  --color-line: #e6e2df; /* filete estándar */
+  --color-line-strong: #d6d0cb; /* borde de campo y de botón */
+  --color-line-soft: #f1ede9; /* separador de fila, fondos neutros */
+  --color-muted: #6f6863; /* texto secundario */
+  --color-faint: #9a938d; /* etiquetas en caja alta */
+
+  /* Estado — mismos verdes y rojos que ve el jugador */
+  --color-success: #4c9a5b;
+  --color-danger: #c0553f;
+  --color-warn: #a67c33;
+  --color-success-tint: #eaf3ec;
+  --color-danger-tint: #faeeeb;
+  --color-warn-tint: #f7f0e2;
+  --color-success-deep: #3d7d49; /* texto sobre success-tint */
+  --color-danger-deep: #a8452f; /* texto sobre danger-tint */
+  --color-warn-deep: #8a6524; /* texto sobre warn-tint */
+  --color-warn-text: #6b4f1d; /* cuerpo sobre warn-tint */
+  --color-gold-tint: #f4ece3; /* distintivo administrador */
+  --color-gold-text: #7a5c40; /* texto sobre gold-tint */
+  --color-danger-line: #e3c0b7; /* borde de botón destructivo en reposo */
+  --color-success-line: #b6d4bd; /* borde de botón aprobar en reposo */
+  --color-paper-hover: #faf6f2; /* hover cálido de botón secundario */
+
+  /* Forma */
+  --radius-chip: 3px;
+  --radius-control: 5px;
+  --radius-card: 10px;
+  --shadow-float: 0 12px 32px -12px rgb(31 26 30 / 0.28);
+
+  /* Medida */
+  --spacing-control: 40px; /* alto de botón, campo, select */
+  --spacing-row: 52px; /* alto de fila de tabla */
+}
+
 body {
   margin: 0;
-  font-family:
-    system-ui,
-    -apple-system,
-    sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
 #root {
   width: 100%;
   min-height: 100vh;
+}
+
+/* Toda cifra en columna o como dato va tabular */
+.tnum,
+th,
+td,
+input[type='number'] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Foco temático — nunca el azul del navegador */
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
 }
 
 /* Leaflet container */

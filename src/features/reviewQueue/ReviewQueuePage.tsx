@@ -1,24 +1,26 @@
 import { useState } from 'react'
-import type { ColumnDef } from '@tanstack/react-table'
-import { DataTable, Pagination } from '../../components/DataTable'
+import { Check, X } from 'lucide-react'
+import { Pagination } from '../../components/DataTable'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
 import { useGeoAttempts, useReviewGeoAttempt } from '../../api/geoAttempts'
 import { t } from '../../lib/i18n'
 import { ApiClientError } from '../../api/client'
 import type { GeoAttempt } from '../../api/types'
+import { Badge, btnApprove, btnDanger, card, overline } from '../../components/ui'
+import { cn, formatDateTime } from '../../lib/utils'
 
 const LIMIT = 20
 
+type ReviewFilter = 'pending' | 'resolved'
+
 /**
- * Review outcome shown in the queue. Approve leaves the attempt's status intact
- * (still `passed`); reject flips it to `failed`. Unreviewed rows are pending.
+ * Review outcome badge for a resolved attempt. Approve leaves the attempt's
+ * status intact (still `passed`); reject flips it to `failed`.
  */
-function reviewOutcome(a: GeoAttempt): { label: string; className: string } {
-  if (!a.reviewed_at) return { label: t.reviewPending, className: 'bg-amber-100 text-amber-800' }
-  if (a.status === 'failed')
-    return { label: t.reviewRejected, className: 'bg-red-100 text-red-700' }
-  return { label: t.reviewApproved, className: 'bg-green-100 text-green-700' }
+function outcomeBadge(a: GeoAttempt) {
+  if (a.status === 'failed') return <Badge variant="danger">{t.reviewRejected}</Badge>
+  return <Badge variant="success">{t.reviewApproved}</Badge>
 }
 
 /**
@@ -29,105 +31,123 @@ function reviewOutcome(a: GeoAttempt): { label: string; className: string } {
  */
 export function ReviewQueuePage() {
   const [offset, setOffset] = useState(0)
+  const [filter, setFilter] = useState<ReviewFilter>('pending')
   const { data, isLoading } = useGeoAttempts({ flaggedOnly: true, limit: LIMIT, offset })
   const [target, setTarget] = useState<{
     attempt: GeoAttempt
     action: 'approve' | 'reject'
   } | null>(null)
 
-  const columns: ColumnDef<GeoAttempt, unknown>[] = [
-    { header: 'Punto', accessorKey: 'waypoint_name' },
-    {
-      header: 'Usuario',
-      accessorKey: 'user_id',
-      cell: ({ getValue }) => (
-        <code className="text-xs text-gray-500">{String(getValue()).slice(0, 8)}…</code>
-      ),
-    },
-    {
-      header: t.flags,
-      accessorKey: 'flags',
-      cell: ({ getValue }) => (
-        <div className="flex flex-wrap gap-1">
-          {(getValue() as string[]).map((f) => (
-            <span
-              key={f}
-              className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800"
-            >
-              {f}
-            </span>
-          ))}
-        </div>
-      ),
-    },
-    {
-      header: t.accuracyRange,
-      id: 'accuracy',
-      cell: ({ row }) => {
-        const { best_accuracy_m, worst_accuracy_m } = row.original
-        if (best_accuracy_m == null || worst_accuracy_m == null) return '—'
-        return `${best_accuracy_m.toFixed(0)}–${worst_accuracy_m.toFixed(0)} m`
-      },
-    },
-    {
-      header: 'Fecha',
-      accessorKey: 'created_at',
-      cell: ({ getValue }) => new Date(String(getValue())).toLocaleString(),
-    },
-    {
-      header: 'Revisión',
-      id: 'reviewed',
-      cell: ({ row }) => {
-        const o = reviewOutcome(row.original)
-        return (
-          <span className={`px-2 py-0.5 rounded text-xs font-medium ${o.className}`}>
-            {o.label}
-          </span>
-        )
-      },
-    },
-    {
-      header: 'Acciones',
-      id: 'actions',
-      // Once an attempt is resolved it shows its outcome above; drop the buttons
-      // so the operator can see at a glance that it's already been handled.
-      cell: ({ row }) =>
-        row.original.reviewed_at ? (
-          <span className="text-xs text-gray-400">—</span>
-        ) : (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setTarget({ attempt: row.original, action: 'approve' })}
-              className="px-3 py-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg"
-            >
-              {t.approve}
-            </button>
-            <button
-              type="button"
-              onClick={() => setTarget({ attempt: row.original, action: 'reject' })}
-              className="px-3 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg"
-            >
-              {t.reject}
-            </button>
-          </div>
-        ),
-    },
-  ]
+  const items = data?.items ?? []
+  const pendingCount = items.filter((a) => !a.reviewed_at).length
+  const visible = items.filter((a) => (filter === 'pending' ? !a.reviewed_at : !!a.reviewed_at))
+
+  const segment = (active: boolean) =>
+    cn(
+      'h-full px-3.5 text-[13px] cursor-pointer transition-colors',
+      active
+        ? 'bg-ink text-cream font-semibold'
+        : 'bg-surface text-muted hover:bg-paper-hover border-l border-line'
+    )
 
   return (
-    <div className="max-w-5xl flex flex-col gap-4">
-      <div>
-        <h2 className="text-xl font-bold text-gray-900">{t.reviewQueueTitle}</h2>
-        <p className="text-sm text-gray-500 mt-1">{t.reviewQueueHint}</p>
+    <div className="max-w-[1120px] flex flex-col gap-5">
+      <p className="max-w-[80ch] text-sm leading-[22px] text-muted">{t.reviewQueueHint}</p>
+
+      <div className="flex items-center gap-3">
+        <div
+          className="flex h-10 overflow-hidden rounded-control border border-line-strong"
+          role="group"
+        >
+          <button
+            type="button"
+            aria-pressed={filter === 'pending'}
+            onClick={() => setFilter('pending')}
+            className={cn(segment(filter === 'pending'), 'border-l-0')}
+          >
+            {t.filterTabPending} <span className="tnum">{pendingCount}</span>
+          </button>
+          <button
+            type="button"
+            aria-pressed={filter === 'resolved'}
+            onClick={() => setFilter('resolved')}
+            className={segment(filter === 'resolved')}
+          >
+            {t.filterTabResolved}
+          </button>
+        </div>
       </div>
 
-      <DataTable
-        data={data?.items ?? []}
-        columns={columns}
-        loading={isLoading}
-        emptyMessage={t.reviewQueueEmpty}
-      />
+      <div className="flex flex-col gap-3">
+        {isLoading ? (
+          <p className="text-faint text-sm">{t.loading}</p>
+        ) : visible.length === 0 ? (
+          <p className="text-faint text-sm">{t.reviewQueueEmpty}</p>
+        ) : (
+          visible.map((a) => (
+            <article
+              key={a.id}
+              className={cn(
+                card,
+                'grid items-center gap-6 px-6 py-5 lg:grid-cols-[1.4fr_1fr_1fr_200px]'
+              )}
+            >
+              <div>
+                {/* i18n: no key for the singular waypoint column label yet */}
+                <p className={overline}>Punto</p>
+                <p className="mt-1.5 text-[15px] font-semibold text-ink">{a.waypoint_name}</p>
+                <p className="mt-0.5 text-[12.5px] text-muted tnum">
+                  {formatDateTime(a.created_at)}
+                </p>
+              </div>
+
+              <div>
+                <p className={overline}>{t.flags}</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {a.flags.map((f) => (
+                    <Badge key={f} variant="warn" mono>
+                      {f}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className={overline}>{t.accuracyRange}</p>
+                <p className="mt-1.5 text-sm text-ink tnum">
+                  {a.best_accuracy_m == null || a.worst_accuracy_m == null
+                    ? '—'
+                    : `${a.best_accuracy_m.toFixed(0)}–${a.worst_accuracy_m.toFixed(0)} m`}
+                </p>
+                <p className="mt-0.5 font-mono text-xs text-muted">{a.user_id.slice(0, 8)}…</p>
+              </div>
+
+              {a.reviewed_at ? (
+                <div className="flex items-center gap-2.5 lg:justify-end">{outcomeBadge(a)}</div>
+              ) : (
+                <div className="flex gap-2 lg:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setTarget({ attempt: a, action: 'approve' })}
+                    className={btnApprove}
+                  >
+                    <Check size={16} strokeWidth={1.5} aria-hidden />
+                    {t.approve}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTarget({ attempt: a, action: 'reject' })}
+                    className={btnDanger}
+                  >
+                    <X size={16} strokeWidth={1.5} aria-hidden />
+                    {t.reject}
+                  </button>
+                </div>
+              )}
+            </article>
+          ))
+        )}
+      </div>
 
       {data && <Pagination total={data.total} limit={LIMIT} offset={offset} onChange={setOffset} />}
 

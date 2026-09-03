@@ -103,7 +103,7 @@ describe('WaypointEditor — single-step create', () => {
     await waitFor(() => expect(screen.getByText(t.questionsHint)).toBeInTheDocument())
     expect(screen.getByText(t.noQuestionsYet)).toBeInTheDocument()
 
-    await user.click(screen.getByText(`+ ${t.addQuestion}`))
+    await user.click(screen.getByText(t.addQuestion))
     expect(screen.getByText(`${t.question} 1`)).toBeInTheDocument()
   })
 
@@ -136,7 +136,7 @@ describe('WaypointEditor — single-step create', () => {
     )
     // The guard fired, so nothing was created and we're still on the create screen.
     expect(created).toBe(0)
-    expect(screen.getByText(`+ ${t.addQuestion}`)).toBeInTheDocument()
+    expect(screen.getByText(t.addQuestion)).toBeInTheDocument()
   })
 
   it('creates the point, its question, and activates it in a single save', async () => {
@@ -172,7 +172,7 @@ describe('WaypointEditor — single-step create', () => {
     await waitFor(() => screen.getByRole('option', { name: 'Cultural' }))
     await user.selectOptions(screen.getByLabelText(/Categoría/), CAT_ID)
 
-    await user.click(screen.getByText(`+ ${t.addQuestion}`))
+    await user.click(screen.getByText(t.addQuestion))
     await user.type(screen.getByLabelText(/Enunciado de la pregunta/i), '¿Año de fundación?')
     const options = screen.getAllByPlaceholderText(/Texto de la opción/)
     await user.type(options[0]!, '1535')

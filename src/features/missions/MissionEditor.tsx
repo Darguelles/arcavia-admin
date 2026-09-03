@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type ChangeEvent } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, Power } from 'lucide-react'
 import {
   useMission,
   useCreateMission,
@@ -12,6 +13,7 @@ import {
 } from '../../api/missions'
 import { useCampaigns } from '../../api/campaigns'
 import { useCategories } from '../../api/categories'
+import { usePhases } from '../../api/phases'
 import {
   missionDetailsSchema,
   missionCreateSchema,
@@ -22,6 +24,16 @@ import { FormField } from '../../components/FormField'
 import { TranslationsEditor } from '../../components/TranslationsEditor'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
+import {
+  Badge,
+  btnDanger,
+  btnGhost,
+  btnIcon,
+  btnPrimary,
+  btnSecondary,
+  card,
+  overline,
+} from '../../components/ui'
 import { CategoriesEditor } from './CategoriesEditor'
 import { PhasesEditor } from './PhasesEditor'
 import { MissionReadinessPanel } from './MissionReadinessPanel'
@@ -68,6 +80,7 @@ export function MissionEditor() {
   const { data: campaignsPage } = useCampaigns({ limit: 200 })
   const campaigns = campaignsPage?.items ?? []
   const { data: categories } = useCategories(id ?? '')
+  const { data: phases } = usePhases(id ?? '')
 
   const createForm = useForm<MissionCreateForm>({
     resolver: zodResolver(missionCreateSchema),
@@ -142,7 +155,7 @@ export function MissionEditor() {
     }
   }
 
-  if (isEdit && isLoading) return <p className="text-gray-400 p-6">{t.loading}</p>
+  if (isEdit && isLoading) return <p className="text-faint p-6">{t.loading}</p>
 
   // ── Create mode ───────────────────────────────────────────────────────────
   if (!isEdit) {
@@ -153,21 +166,23 @@ export function MissionEditor() {
       formState: { errors, isSubmitting },
     } = createForm
     return (
-      <div className="max-w-2xl">
-        <div className="flex items-center gap-3 mb-6">
+      <div className="max-w-2xl flex flex-col gap-6">
+        <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={() => navigate('/admin/missions')}
-            className="text-sm text-gray-500 hover:text-gray-700"
+            className={cn(btnIcon, 'h-9 w-9')}
+            aria-label={t.back}
+            title={t.back}
           >
-            ← {t.back}
+            <ArrowLeft size={16} strokeWidth={1.5} />
           </button>
-          <h2 className="text-xl font-bold text-gray-900">Nueva misión</h2>
+          <h2 className="m-0 text-2xl leading-[30px] font-semibold text-ink">{t.newMission}</h2>
         </div>
 
         <form
           onSubmit={handleSubmit(onCreateSubmit)}
-          className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4"
+          className={cn(card, 'p-6 flex flex-col gap-4')}
           noValidate
         >
           <FormField
@@ -248,18 +263,10 @@ export function MissionEditor() {
           />
 
           <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => navigate('/admin/missions')}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
+            <button type="button" onClick={() => navigate('/admin/missions')} className={btnGhost}>
               {t.cancel}
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
-            >
+            <button type="submit" disabled={isSubmitting} className={btnPrimary}>
               {isSubmitting ? t.loading : t.create}
             </button>
           </div>
@@ -269,148 +276,171 @@ export function MissionEditor() {
   }
 
   // ── Edit mode (tabbed) ────────────────────────────────────────────────────
-  const TABS: { key: Tab; label: string }[] = [
+  const campaign = campaigns.find((c) => c.id === mission?.campaign_id)
+  const breadcrumb = [campaign?.name, campaign?.city_name].filter(Boolean).join(' · ')
+
+  const TABS: { key: Tab; label: string; count?: number }[] = [
     { key: 'details', label: t.detailsSection },
-    { key: 'categories', label: t.categoriesTab },
-    { key: 'phases', label: t.phasesTab },
+    { key: 'categories', label: t.categoriesTab, count: categories?.length },
+    { key: 'phases', label: t.phasesTab, count: phases?.length },
   ]
 
   return (
-    <div className="max-w-3xl">
-      <div className="flex items-center gap-3 mb-4">
+    <div className="max-w-[1120px] flex flex-col gap-6">
+      <div className="flex items-center gap-4">
         <button
           type="button"
           onClick={() => navigate('/admin/missions')}
-          className="text-sm text-gray-500 hover:text-gray-700"
+          className={cn(btnIcon, 'h-9 w-9')}
+          aria-label={t.back}
+          title={t.back}
         >
-          ← {t.back}
+          <ArrowLeft size={16} strokeWidth={1.5} />
         </button>
-        <h2 className="text-xl font-bold text-gray-900 flex-1">{mission?.name}</h2>
+        <div>
+          {breadcrumb && <p className={cn(overline, 'm-0')}>{breadcrumb}</p>}
+          <h2 className="m-0 mt-1 text-2xl leading-[30px] font-semibold text-ink">
+            {mission?.name}
+          </h2>
+        </div>
+        <Badge variant={mission?.is_active ? 'success' : 'neutral'}>
+          {mission?.is_active ? t.active : t.filterTabDraft}
+        </Badge>
         {mission?.is_active && (
           <button
             type="button"
             onClick={() => setConfirmDeactivate(true)}
-            className="text-sm text-red-600 hover:text-red-800 font-medium"
+            className={cn(btnDanger, 'ml-auto')}
           >
+            <Power size={16} strokeWidth={1.5} />
             {t.deactivate}
           </button>
         )}
       </div>
 
-      {id && (
-        <MissionReadinessPanel
-          missionId={id}
-          isActive={mission?.is_active ?? false}
-          onNavigateTab={setActiveTab}
-        />
-      )}
-
-      <div className="flex border-b border-gray-200 mb-6">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              'px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
-              activeTab === tab.key
-                ? 'border-indigo-600 text-indigo-700'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === 'details' && (
-        <form
-          onSubmit={detailsForm.handleSubmit(onDetailsSubmit)}
-          className="flex flex-col gap-4"
-          noValidate
-        >
-          {id && <MissionImageSection missionId={id} imageUrl={mission?.image_url ?? null} />}
-
-          <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
-            <FormField
-              as="input"
-              label={t.name}
-              required
-              error={detailsForm.formState.errors.name?.message}
-              {...detailsForm.register('name')}
-            />
-            <FormField
-              as="textarea"
-              label={t.description}
-              error={detailsForm.formState.errors.description?.message}
-              {...detailsForm.register('description')}
-            />
-
-            <div className="grid grid-cols-3 gap-4">
-              <FormField
-                as="select"
-                label={t.difficulty}
-                error={detailsForm.formState.errors.difficulty?.message}
-                {...detailsForm.register('difficulty')}
+      <div className="grid grid-cols-[1fr_340px] gap-6 items-start">
+        <div className="flex flex-col gap-5 min-w-0">
+          <div className="flex gap-0 border-b border-line">
+            {TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  'px-1 py-2.5 mr-5 border-b-2 -mb-px text-sm transition-colors cursor-pointer',
+                  activeTab === tab.key
+                    ? 'border-gold font-semibold text-ink'
+                    : 'border-transparent font-medium text-muted hover:text-ink'
+                )}
               >
-                {DIFFICULTIES.map((d) => (
-                  <option key={d.value} value={d.value}>
-                    {d.label}
-                  </option>
-                ))}
-              </FormField>
-              <FormField
-                as="input"
-                label={t.rewardPoints}
-                hint={t.rewardPointsHint}
-                type="number"
-                min={0}
-                error={detailsForm.formState.errors.reward_points?.message}
-                {...detailsForm.register('reward_points', { valueAsNumber: true })}
-              />
-              <FormField
-                as="input"
-                label={t.estimatedTime}
-                type="number"
-                min={0}
-                error={detailsForm.formState.errors.estimated_time_minutes?.message}
-                {...detailsForm.register('estimated_time_minutes', { valueAsNumber: true })}
-              />
-            </div>
-
-            <Controller
-              name="translations"
-              control={detailsForm.control}
-              render={({ field }) => (
-                <TranslationsEditor
-                  fields={[
-                    { key: 'name', label: t.name },
-                    { key: 'description', label: t.description, multiline: true },
-                  ]}
-                  value={field.value ?? {}}
-                  onChange={field.onChange}
-                />
-              )}
-            />
+                {tab.label}
+                {tab.count !== undefined && (
+                  <span className="ml-1.5 text-faint tnum">{tab.count}</span>
+                )}
+              </button>
+            ))}
           </div>
 
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={detailsForm.formState.isSubmitting || !detailsForm.formState.isDirty}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+          {activeTab === 'details' && (
+            <form
+              onSubmit={detailsForm.handleSubmit(onDetailsSubmit)}
+              className="flex flex-col gap-5"
+              noValidate
             >
-              {detailsForm.formState.isSubmitting ? t.loading : t.save}
-            </button>
-          </div>
-        </form>
-      )}
+              {id && <MissionImageSection missionId={id} imageUrl={mission?.image_url ?? null} />}
 
-      {activeTab === 'categories' && id && <CategoriesEditor missionId={id} />}
+              <div className={cn(card, 'p-6 flex flex-col gap-4')}>
+                <FormField
+                  as="input"
+                  label={t.name}
+                  required
+                  error={detailsForm.formState.errors.name?.message}
+                  {...detailsForm.register('name')}
+                />
+                <FormField
+                  as="textarea"
+                  label={t.description}
+                  error={detailsForm.formState.errors.description?.message}
+                  {...detailsForm.register('description')}
+                />
 
-      {activeTab === 'phases' && id && (
-        <PhasesEditor missionId={id} hasCategories={(categories?.length ?? 0) > 0} />
-      )}
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    as="select"
+                    label={t.difficulty}
+                    error={detailsForm.formState.errors.difficulty?.message}
+                    {...detailsForm.register('difficulty')}
+                  >
+                    {DIFFICULTIES.map((d) => (
+                      <option key={d.value} value={d.value}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </FormField>
+                  <FormField
+                    as="input"
+                    label={t.rewardPoints}
+                    hint={t.rewardPointsHint}
+                    type="number"
+                    min={0}
+                    error={detailsForm.formState.errors.reward_points?.message}
+                    {...detailsForm.register('reward_points', { valueAsNumber: true })}
+                  />
+                  <FormField
+                    as="input"
+                    label={t.estimatedTime}
+                    type="number"
+                    min={0}
+                    error={detailsForm.formState.errors.estimated_time_minutes?.message}
+                    {...detailsForm.register('estimated_time_minutes', { valueAsNumber: true })}
+                  />
+                </div>
+
+                <Controller
+                  name="translations"
+                  control={detailsForm.control}
+                  render={({ field }) => (
+                    <TranslationsEditor
+                      fields={[
+                        { key: 'name', label: t.name },
+                        { key: 'description', label: t.description, multiline: true },
+                      ]}
+                      value={field.value ?? {}}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={detailsForm.formState.isSubmitting || !detailsForm.formState.isDirty}
+                  className={btnSecondary}
+                >
+                  {detailsForm.formState.isSubmitting ? t.loading : t.save}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {activeTab === 'categories' && id && <CategoriesEditor missionId={id} />}
+
+          {activeTab === 'phases' && id && (
+            <PhasesEditor missionId={id} hasCategories={(categories?.length ?? 0) > 0} />
+          )}
+        </div>
+
+        <div className="sticky top-0 flex flex-col gap-5">
+          {id && (
+            <MissionReadinessPanel
+              missionId={id}
+              isActive={mission?.is_active ?? false}
+              onNavigateTab={setActiveTab}
+            />
+          )}
+        </div>
+      </div>
 
       <ConfirmDialog
         open={confirmDeactivate}
@@ -474,18 +504,18 @@ function MissionImageSection({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+    <div className={cn(card, 'p-6 flex flex-col gap-4')}>
       <div>
-        <h3 className="text-sm font-semibold text-gray-900">{t.missionImage}</h3>
-        <p className="text-xs text-gray-400 mt-0.5">{t.missionImageHint}</p>
+        <h3 className="m-0 text-[17px] font-semibold text-ink">{t.missionImage}</h3>
+        <p className="m-0 mt-1 text-[13px] text-muted">{t.missionImageHint}</p>
       </div>
 
       <div className="flex items-center gap-5">
-        <div className="h-28 w-44 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+        <div className="h-28 w-44 shrink-0 overflow-hidden rounded-card border border-line bg-paper">
           {imageUrl ? (
             <img src={imageUrl} alt="" className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center px-2 text-center text-xs text-gray-400">
+            <div className="flex h-full w-full items-center justify-center px-2 text-center text-xs text-faint">
               {t.noImageYet}
             </div>
           )}
@@ -496,7 +526,7 @@ function MissionImageSection({
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={busy}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+            className={btnSecondary}
           >
             {busy ? t.loading : imageUrl ? t.changeImage : t.uploadImage}
           </button>
@@ -505,7 +535,7 @@ function MissionImageSection({
               type="button"
               onClick={onRemove}
               disabled={busy}
-              className="px-2 py-1 text-sm font-medium text-red-600 hover:text-red-800 disabled:opacity-60"
+              className="bg-transparent border-0 p-0 text-[13px] font-medium text-danger hover:text-danger-deep cursor-pointer disabled:opacity-40"
             >
               {t.removeImage}
             </button>

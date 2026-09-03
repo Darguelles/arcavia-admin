@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Plus, Trash2 } from 'lucide-react'
 import {
   useCategories,
   useCreateCategory,
@@ -7,9 +8,13 @@ import {
 } from '../../api/categories'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
+import { Badge, btnIconSmDanger, btnRowAction, btnSecondary, card } from '../../components/ui'
 import { t } from '../../lib/i18n'
 import { translateApiError } from '../../lib/apiErrors'
+import { cn } from '../../lib/utils'
 import type { MissionCategory } from '../../api/types'
+
+const inputClass = 'h-10 rounded-control border border-line-strong bg-surface px-3 text-sm'
 
 export function CategoriesEditor({ missionId }: { missionId: string }) {
   const { data: categories, isLoading } = useCategories(missionId)
@@ -34,13 +39,13 @@ export function CategoriesEditor({ missionId }: { missionId: string }) {
     }
   }
 
-  if (isLoading) return <p className="text-gray-400">{t.loading}</p>
+  if (isLoading) return <p className="text-faint">{t.loading}</p>
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
-      <div className="flex items-baseline justify-between">
-        <h3 className="font-semibold text-gray-800">{t.categories}</h3>
-        <p className="text-xs text-gray-500">{t.thresholdHint}</p>
+    <div className={cn(card, 'p-6 flex flex-col gap-4')}>
+      <div>
+        <h3 className="m-0 text-[17px] font-semibold text-ink">{t.categories}</h3>
+        <p className="m-0 mt-1 text-[13px] text-muted">{t.thresholdHint}</p>
       </div>
 
       {categories && categories.length > 0 ? (
@@ -50,40 +55,41 @@ export function CategoriesEditor({ missionId }: { missionId: string }) {
           ))}
         </div>
       ) : (
-        <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-4 py-3">
+        <div className="bg-warn-tint text-warn-text rounded-control px-4 py-3 text-[13px] leading-5">
           {t.noCategoriesYet}
-        </p>
+        </div>
       )}
 
       {/* Add row */}
-      <div className="flex items-end gap-2 border-t border-gray-100 pt-4">
-        <label className="flex flex-col gap-1 flex-1">
-          <span className="text-xs font-medium text-gray-600">{t.name}</span>
+      <div className="flex items-end gap-2 border-t border-line-soft pt-4">
+        <label className="flex flex-col gap-1.5 flex-1">
+          <span className="text-[13px] font-medium text-ink">{t.name}</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className={inputClass}
             placeholder={t.categoryPlaceholder}
           />
         </label>
-        <label className="flex flex-col gap-1 w-28">
-          <span className="text-xs font-medium text-gray-600">{t.threshold}</span>
+        <label className="flex flex-col gap-1.5 w-28">
+          <span className="text-[13px] font-medium text-ink">{t.threshold}</span>
           <input
             type="number"
             min={0}
             max={100}
             value={threshold}
             onChange={(e) => setThreshold(Number(e.target.value))}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className={inputClass}
           />
         </label>
         <button
           type="button"
           onClick={add}
           disabled={create.isPending || !name.trim()}
-          className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+          className={btnSecondary}
         >
-          + {t.add}
+          <Plus size={16} strokeWidth={1.5} />
+          {t.add}
         </button>
       </div>
     </div>
@@ -125,7 +131,7 @@ function CategoryRow({ missionId, category }: { missionId: string; category: Mis
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="rounded-lg border border-gray-300 px-3 py-2 text-sm flex-1"
+        className={cn(inputClass, 'flex-1')}
         aria-label={`${t.category}: ${category.name}`}
       />
       <input
@@ -134,38 +140,38 @@ function CategoryRow({ missionId, category }: { missionId: string; category: Mis
         max={100}
         value={threshold}
         onChange={(e) => setThreshold(Number(e.target.value))}
-        className="rounded-lg border border-gray-300 px-3 py-2 text-sm w-24"
+        className={cn(inputClass, 'w-24')}
         aria-label={t.threshold}
       />
       {category.total_points > 0 ? (
-        <span className="text-xs text-gray-400 w-24 text-right" title={t.totalPoints}>
+        <span className="text-xs text-muted tnum w-24 text-right" title={t.totalPoints}>
           {category.total_points} pts
         </span>
       ) : (
         // 0 points blocks mission activation (the category's threshold would be
         // unreachable) — make it look like the problem it is.
-        <span
-          className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 whitespace-nowrap"
-          title={t.totalPoints}
-        >
-          0 pts · {t.noPointsBadge}
+        <span title={t.totalPoints}>
+          <Badge variant="warn" className="whitespace-nowrap tnum">
+            0 pts · {t.noPointsBadge}
+          </Badge>
         </span>
       )}
       <button
         type="button"
         onClick={save}
         disabled={!dirty || update.isPending}
-        className="px-3 py-2 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg disabled:opacity-40"
+        className={btnRowAction}
       >
         {t.save}
       </button>
       <button
         type="button"
         onClick={() => setConfirm(true)}
-        className="px-2 py-2 text-xs text-red-600 hover:text-red-800"
+        className={btnIconSmDanger}
         aria-label={`${t.delete} ${category.name}`}
+        title={t.delete}
       >
-        ✕
+        <Trash2 size={15} strokeWidth={1.5} />
       </button>
       <ConfirmDialog
         open={confirm}

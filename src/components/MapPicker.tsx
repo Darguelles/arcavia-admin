@@ -157,10 +157,10 @@ export function MapPicker({
       <div
         ref={containerRef}
         style={{ height }}
-        className="rounded-lg border border-gray-300 overflow-hidden min-w-[300px]"
+        className="rounded-card border border-line-strong overflow-hidden min-w-[300px]"
         aria-label="Mapa para colocar el pin de ubicación"
       />
-      {!readOnly && <p className="text-xs text-gray-500">{t.mapPinHint}</p>}
+      {!readOnly && <p className="text-[13px] leading-[19px] text-muted">{t.mapPinHint}</p>}
     </div>
   )
 }

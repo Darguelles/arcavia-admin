@@ -73,10 +73,11 @@ describe('ReviewQueuePage', () => {
     })
   })
 
-  it('shows a pending badge and action buttons for an unreviewed attempt', async () => {
+  it('shows the pending segment with its count and action buttons for an unreviewed attempt', async () => {
     render(<Wrapper />)
     await waitFor(() => screen.getByText('Arco Colonial'))
-    expect(screen.getByText(t.reviewPending)).toBeInTheDocument()
+    const pendingTab = screen.getByRole('button', { name: `${t.filterTabPending} 1` })
+    expect(pendingTab).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: t.approve })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: t.reject })).toBeInTheDocument()
   })
@@ -106,7 +107,11 @@ describe('ReviewQueuePage', () => {
         })
       )
     )
+    const user = userEvent.setup()
     render(<Wrapper />)
+    // Resolved attempts live under the "Resueltas" segment, not the default pending one.
+    await waitFor(() => screen.getByRole('button', { name: t.filterTabResolved }))
+    await user.click(screen.getByRole('button', { name: t.filterTabResolved }))
     await waitFor(() => screen.getByText('Puente Viejo'))
     expect(screen.getByText(t.reviewRejected)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: t.approve })).not.toBeInTheDocument()

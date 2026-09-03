@@ -2,12 +2,14 @@ import { useEffect, useState, type ChangeEvent } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { citySchema, type CityForm as CityFormData } from '../../lib/validation'
 import { useCity, useCreateCity, useUpdateCity } from '../../api/cities'
 import { FormField } from '../../components/FormField'
 import { MapAreaPicker, type BoundingBox } from '../../components/MapAreaPicker'
 import { TranslationsEditor } from '../../components/TranslationsEditor'
 import { useToast } from '../../components/Toast'
+import { btnGhost, btnIcon, btnPrimary, card } from '../../components/ui'
 import { slugify } from '../../lib/utils'
 import { t } from '../../lib/i18n'
 import { ApiClientError } from '../../api/client'
@@ -245,7 +247,7 @@ export function CityForm() {
   }
 
   if (isEdit && isLoading) {
-    return <p className="text-gray-400 p-6">{t.loading}</p>
+    return <p className="text-faint p-6">{t.loading}</p>
   }
 
   const bbox = {
@@ -263,22 +265,24 @@ export function CityForm() {
         <button
           type="button"
           onClick={() => navigate('/admin/cities')}
-          className="text-sm text-gray-500 hover:text-gray-700"
+          className={btnIcon}
+          aria-label={t.back}
+          title={t.back}
         >
-          ← {t.back}
+          <ArrowLeft size={18} strokeWidth={1.5} />
         </button>
-        <h2 className="text-xl font-bold text-gray-900">
+        <h2 className="text-2xl font-semibold text-ink">
           {isEdit ? `Editar ciudad: ${city?.name ?? ''}` : 'Nueva ciudad'}
         </h2>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6" noValidate>
-        <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
-          <h3 className="font-semibold text-gray-800">Información general</h3>
+        <div className={`${card} p-6 flex flex-col gap-5`}>
+          <h3 className="text-[17px] font-semibold text-ink">Información general</h3>
 
           {/* Step 1: country, then city/state — selecting a place names the
               city and centers the map below. */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <FormField
               as="select"
               label={t.country}
@@ -309,7 +313,7 @@ export function CityForm() {
             </FormField>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <FormField
               as="input"
               label={t.name}
@@ -327,7 +331,7 @@ export function CityForm() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <FormField
               as="select"
               label={t.language}
@@ -355,7 +359,7 @@ export function CityForm() {
             </FormField>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <FormField
               as="select"
               label={t.privacyRules}
@@ -379,10 +383,10 @@ export function CityForm() {
             <input
               id="is_active"
               type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+              className="h-4 w-4 rounded-chip border-line-strong accent-gold"
               {...register('is_active')}
             />
-            <label htmlFor="is_active" className="text-sm font-medium text-gray-700">
+            <label htmlFor="is_active" className="text-sm font-medium text-ink">
               {t.active}
             </label>
           </div>
@@ -401,9 +405,9 @@ export function CityForm() {
         </div>
 
         {/* Map area */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="font-semibold text-gray-800 mb-1">{t.cityMapArea}</h3>
-          <p className="text-xs text-gray-500 mb-4">{t.cityMapAreaHint}</p>
+        <div className={`${card} p-6`}>
+          <h3 className="text-[17px] font-semibold text-ink mb-1">{t.cityMapArea}</h3>
+          <p className="text-[13px] text-muted mb-4">{t.cityMapAreaHint}</p>
 
           <MapAreaPicker
             value={bbox}
@@ -418,13 +422,13 @@ export function CityForm() {
           />
 
           {errors.bbox_north && (
-            <p className="text-xs text-red-600 mt-2">Define el área del mapa.</p>
+            <p className="text-xs text-danger mt-2">Define el área del mapa.</p>
           )}
         </div>
 
         {/* Advanced */}
-        <details className="bg-white rounded-xl border border-gray-200">
-          <summary className="px-6 py-4 cursor-pointer text-sm font-medium text-gray-600">
+        <details className={card}>
+          <summary className="px-6 py-4 cursor-pointer text-sm font-medium text-muted hover:text-ink">
             Avanzado (URL de tiles del mapa)
           </summary>
           <div className="px-6 pb-6">
@@ -438,18 +442,14 @@ export function CityForm() {
           </div>
         </details>
 
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => navigate('/admin/cities')}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
+        <div className="flex justify-end gap-3 border-t border-line-soft pt-4">
+          <button type="button" onClick={() => navigate('/admin/cities')} className={btnGhost}>
             {t.cancel}
           </button>
           <button
             type="submit"
             disabled={isSubmitting || (!isDirty && isEdit)}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+            className={btnPrimary}
           >
             {isSubmitting ? t.loading : t.save}
           </button>

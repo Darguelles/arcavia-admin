@@ -1,12 +1,47 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  ChevronRight,
+  GripVertical,
+  MapPin,
+  Pencil,
+  Plus,
+  Trash2,
+  TriangleAlert,
+  X,
+} from 'lucide-react'
 import { usePhases, useCreatePhase, useUpdatePhase, useDeletePhase } from '../../api/phases'
 import { useWaypoints, useDeleteWaypoint } from '../../api/waypoints'
+import { useCategories } from '../../api/categories'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
+import {
+  Badge,
+  btnAddDashed,
+  btnIconSm,
+  btnIconSmDanger,
+  btnRowAction,
+  btnSecondary,
+  card,
+} from '../../components/ui'
 import { t } from '../../lib/i18n'
 import { translateApiError } from '../../lib/apiErrors'
+import { cn } from '../../lib/utils'
 import type { Phase, Waypoint } from '../../api/types'
+
+function WarnBanner({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-start gap-2.5 bg-warn-tint text-warn-text rounded-control px-4 py-3 text-[13px] leading-5">
+      <TriangleAlert
+        size={16}
+        strokeWidth={1.5}
+        className="shrink-0 mt-0.5 text-warn-deep"
+        aria-hidden
+      />
+      <span>{children}</span>
+    </div>
+  )
+}
 
 export function PhasesEditor({
   missionId,
@@ -16,9 +51,14 @@ export function PhasesEditor({
   hasCategories: boolean
 }) {
   const { data: phases, isLoading } = usePhases(missionId)
+  // Shared query key with CategoriesEditor / the readiness panel — resolves
+  // each waypoint's category name without an extra request.
+  const { data: categories } = useCategories(missionId)
   const create = useCreatePhase(missionId)
   const toast = useToast()
   const [name, setName] = useState('')
+
+  const categoryNames = new Map((categories ?? []).map((c) => [c.id, c.name]))
 
   async function add() {
     if (!name.trim()) return
@@ -31,42 +71,44 @@ export function PhasesEditor({
     }
   }
 
-  if (isLoading) return <p className="text-gray-400">{t.loading}</p>
+  if (isLoading) return <p className="text-faint">{t.loading}</p>
 
   return (
-    <div className="flex flex-col gap-4">
-      {!hasCategories && (
-        <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-4 py-3">
-          {t.noCategoriesYet}
-        </p>
-      )}
+    <div className="flex flex-col gap-5">
+      {!hasCategories && <WarnBanner>{t.noCategoriesYet}</WarnBanner>}
 
       {phases && phases.length > 0 ? (
-        phases.map((p) => (
-          <PhaseCard key={p.id} missionId={missionId} phase={p} canAddWaypoint={hasCategories} />
+        phases.map((p, i) => (
+          <PhaseCard
+            key={p.id}
+            missionId={missionId}
+            phase={p}
+            index={i}
+            canAddWaypoint={hasCategories}
+            categoryNames={categoryNames}
+          />
         ))
       ) : (
-        <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-4 py-3">{t.noPhasesYet}</p>
+        <WarnBanner>{t.noPhasesYet}</WarnBanner>
       )}
 
       {/* Add phase */}
-      <div className="flex items-end gap-2">
-        <label className="flex flex-col gap-1 flex-1">
-          <span className="text-xs font-medium text-gray-600">{t.phase}</span>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            placeholder={t.addPhase}
-          />
-        </label>
+      <div className="flex items-center gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="h-10 flex-1 max-w-xs rounded-control border border-line-strong bg-surface px-3 text-sm"
+          placeholder={t.addPhase}
+          aria-label={t.phase}
+        />
         <button
           type="button"
           onClick={add}
           disabled={create.isPending || !name.trim()}
-          className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+          className={btnSecondary}
         >
-          + {t.addPhase}
+          <Plus size={16} strokeWidth={1.5} />
+          {t.addPhase}
         </button>
       </div>
     </div>
@@ -76,11 +118,15 @@ export function PhasesEditor({
 function PhaseCard({
   missionId,
   phase,
+  index,
   canAddWaypoint,
+  categoryNames,
 }: {
   missionId: string
   phase: Phase
+  index: number
   canAddWaypoint: boolean
+  categoryNames: Map<string, string>
 }) {
   const navigate = useNavigate()
   const { data: waypoints } = useWaypoints(phase.id)
@@ -88,12 +134,17 @@ function PhaseCard({
   const del = useDeletePhase(missionId, phase.id)
   const toast = useToast()
   const [name, setName] = useState(phase.name)
+  const [editing, setEditing] = useState(false)
   const [confirm, setConfirm] = useState(false)
+
+  const hasActive = waypoints?.some((w) => w.is_active) ?? false
+  const totalPoints = (waypoints ?? []).reduce((sum, w) => sum + w.points, 0)
 
   async function save() {
     try {
       await update.mutateAsync({ name })
       toast.success(t.saved)
+      setEditing(false)
     } catch (err) {
       toast.error(translateApiError(err))
     }
@@ -110,59 +161,118 @@ function PhaseCard({
     }
   }
 
+  const addWaypointButton = (
+    <button
+      type="button"
+      disabled={!canAddWaypoint}
+      onClick={() => navigate(`/admin/missions/${missionId}/waypoints/new?phaseId=${phase.id}`)}
+      className={btnAddDashed}
+      title={!canAddWaypoint ? t.noCategoriesYet : undefined}
+    >
+      <Plus size={15} strokeWidth={1.5} />
+      {t.addWaypoint}
+    </button>
+  )
+
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium flex-1"
-          aria-label={`${t.phase}: ${phase.name}`}
+    <div className={cn(card, 'overflow-hidden')}>
+      {/* Header */}
+      <div className="px-5 py-4 flex items-center gap-3 border-b border-line bg-paper">
+        <GripVertical
+          size={18}
+          strokeWidth={1.5}
+          className="text-line-strong shrink-0"
+          aria-hidden
         />
-        {waypoints && !waypoints.some((w) => w.is_active) && (
-          // A phase without an active waypoint blocks mission activation.
-          <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 whitespace-nowrap">
-            {t.noActiveWaypointBadge}
-          </span>
+        {editing ? (
+          <>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+              className="h-8 flex-1 rounded-control border border-line-strong bg-surface px-2.5 text-sm font-medium"
+              aria-label={`${t.phase}: ${phase.name}`}
+            />
+            <button
+              type="button"
+              onClick={save}
+              disabled={name === phase.name || update.isPending}
+              className={btnRowAction}
+            >
+              {t.save}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setName(phase.name)
+                setEditing(false)
+              }}
+              className={btnIconSm}
+              aria-label={t.cancel}
+              title={t.cancel}
+            >
+              <X size={15} strokeWidth={1.5} />
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="m-0 text-[15px] font-semibold text-ink">
+              {t.phase} {index + 1} — {phase.name}
+            </p>
+            {waypoints &&
+              (hasActive ? (
+                <span className="text-xs text-muted tnum">
+                  {waypoints.length} {waypoints.length === 1 ? 'punto' : 'puntos'} · {totalPoints}{' '}
+                  pts
+                </span>
+              ) : (
+                // A phase without an active waypoint blocks mission activation.
+                <Badge variant="outline">{t.noActiveWaypointBadge}</Badge>
+              ))}
+            <div className="ml-auto flex gap-1.5">
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className={btnIconSm}
+                aria-label={`${t.edit} ${phase.name}`}
+                title={t.edit}
+              >
+                <Pencil size={15} strokeWidth={1.5} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirm(true)}
+                className={btnIconSmDanger}
+                aria-label={`${t.delete} ${phase.name}`}
+                title={t.delete}
+              >
+                <Trash2 size={15} strokeWidth={1.5} />
+              </button>
+            </div>
+          </>
         )}
-        <button
-          type="button"
-          onClick={save}
-          disabled={name === phase.name || update.isPending}
-          className="px-3 py-2 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg disabled:opacity-40"
-        >
-          {t.save}
-        </button>
-        <button
-          type="button"
-          onClick={() => setConfirm(true)}
-          className="px-2 py-2 text-xs text-red-600 hover:text-red-800"
-          aria-label={`${t.delete} ${phase.name}`}
-        >
-          ✕
-        </button>
       </div>
 
       {/* Waypoints */}
-      <div className="flex flex-col gap-1.5 pl-1">
-        {waypoints && waypoints.length > 0 ? (
-          waypoints.map((w) => (
-            <WaypointRow key={w.id} missionId={missionId} phaseId={phase.id} waypoint={w} />
-          ))
-        ) : (
-          <p className="text-xs text-gray-400 py-1">{t.noWaypointsYet}</p>
-        )}
-      </div>
-
-      <button
-        type="button"
-        disabled={!canAddWaypoint}
-        onClick={() => navigate(`/admin/missions/${missionId}/waypoints/new?phaseId=${phase.id}`)}
-        className="self-start text-sm text-indigo-600 hover:text-indigo-800 font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-        title={!canAddWaypoint ? t.noCategoriesYet : undefined}
-      >
-        + {t.addWaypoint}
-      </button>
+      {waypoints && waypoints.length > 0 ? (
+        <>
+          {waypoints.map((w) => (
+            <WaypointRow
+              key={w.id}
+              missionId={missionId}
+              phaseId={phase.id}
+              waypoint={w}
+              categoryName={categoryNames.get(w.category_id) ?? ''}
+            />
+          ))}
+          <div className="px-5 py-3">{addWaypointButton}</div>
+        </>
+      ) : (
+        <div className="px-5 py-[22px] flex flex-col items-start gap-3">
+          <p className="m-0 text-[13px] text-muted">{t.noWaypointsYet}</p>
+          {addWaypointButton}
+        </div>
+      )}
 
       <ConfirmDialog
         open={confirm}
@@ -181,10 +291,12 @@ function WaypointRow({
   missionId,
   phaseId,
   waypoint,
+  categoryName,
 }: {
   missionId: string
   phaseId: string
   waypoint: Waypoint
+  categoryName: string
 }) {
   const navigate = useNavigate()
   const del = useDeleteWaypoint(waypoint.id, phaseId, missionId)
@@ -202,31 +314,60 @@ function WaypointRow({
     }
   }
 
+  function open() {
+    navigate(`/admin/missions/${missionId}/waypoints/${waypoint.id}`)
+  }
+
+  // "Categoría · factores de check-in" (question count is not available here).
+  const factors = [
+    waypoint.requires_qr && 'QR',
+    'ubicación',
+    waypoint.requires_keyword && 'palabra clave',
+  ]
+    .filter(Boolean)
+    .join(' + ')
+  const subtitle = [categoryName, factors].filter(Boolean).join(' · ')
+
   return (
-    <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
-      <button
-        type="button"
-        onClick={() => navigate(`/admin/missions/${missionId}/waypoints/${waypoint.id}`)}
-        className="text-sm text-gray-800 hover:text-indigo-700 font-medium flex-1 text-left"
+    <>
+      <div
+        onClick={open}
+        className="px-5 py-3.5 flex items-center gap-3.5 border-b border-line-soft last:border-b-0 hover:bg-paper cursor-pointer transition-colors"
       >
-        {waypoint.name}
-      </button>
-      <span className="text-xs text-gray-400">{waypoint.points} pts</span>
-      <span
-        className={`px-2 py-0.5 rounded text-xs font-medium ${
-          waypoint.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-        }`}
-      >
-        {waypoint.is_active ? t.active : t.inactive}
-      </span>
-      <button
-        type="button"
-        onClick={() => setConfirm(true)}
-        className="px-2 text-xs text-red-600 hover:text-red-800"
-        aria-label={`${t.deactivate} ${waypoint.name}`}
-      >
-        ✕
-      </button>
+        <MapPin
+          size={18}
+          strokeWidth={1.5}
+          className={cn('shrink-0', waypoint.is_active ? 'text-gold-deep' : 'text-line-strong')}
+          aria-hidden
+        />
+        <div className="flex-1 min-w-0">
+          <button
+            type="button"
+            onClick={open}
+            className="block m-0 p-0 bg-transparent border-0 text-sm font-medium text-ink text-left cursor-pointer"
+          >
+            {waypoint.name}
+          </button>
+          {subtitle && <p className="m-0 mt-0.5 text-xs text-faint truncate">{subtitle}</p>}
+        </div>
+        <span className="text-[13px] text-muted tnum shrink-0">{waypoint.points} pts</span>
+        <Badge variant={waypoint.is_active ? 'success' : 'neutral'}>
+          {waypoint.is_active ? t.active : t.inactive}
+        </Badge>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            setConfirm(true)
+          }}
+          className={btnIconSmDanger}
+          aria-label={`${t.deactivate} ${waypoint.name}`}
+          title={t.deactivate}
+        >
+          <Trash2 size={15} strokeWidth={1.5} />
+        </button>
+        <ChevronRight size={18} strokeWidth={1.5} className="text-faint shrink-0" aria-hidden />
+      </div>
       <ConfirmDialog
         open={confirm}
         title={t.deactivate}
@@ -236,6 +377,6 @@ function WaypointRow({
         onCancel={() => setConfirm(false)}
         loading={del.isPending}
       />
-    </div>
+    </>
   )
 }

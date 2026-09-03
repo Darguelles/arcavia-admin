@@ -228,10 +228,10 @@ export function MapAreaPicker({ value, onChange, height = '400px' }: MapAreaPick
       <div
         ref={containerRef}
         style={{ height }}
-        className="rounded-lg border border-gray-300 overflow-hidden min-w-[300px]"
+        className="rounded-card border border-line-strong overflow-hidden min-w-[300px]"
         aria-label="Mapa para definir el área de la ciudad"
       />
-      <p className="text-xs text-gray-500">
+      <p className="text-[13px] leading-[19px] text-muted">
         <strong>Click izquierdo dos veces</strong> para dibujar el área.{' '}
         <strong>Click derecho</strong> para fijar el centro. {t.cityMapAreaHint}
       </p>

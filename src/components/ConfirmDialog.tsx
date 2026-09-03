@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { t } from '../lib/i18n'
 import { cn } from '../lib/utils'
+import { btnGhost } from './ui'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -16,6 +17,7 @@ interface ConfirmDialogProps {
 /**
  * Confirm dialog for destructive/sensitive actions (spec §5.4).
  * Always states the concrete effect before the user can confirm.
+ * Design: única superficie flotante — tarjeta con shadow-float sobre el velo.
  */
 export function ConfirmDialog({
   open,
@@ -43,21 +45,21 @@ export function ConfirmDialog({
       aria-labelledby="confirm-title"
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
+      <div className="absolute inset-0 bg-ink/50" onClick={onCancel} />
 
-      <div className="relative bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
-        <h2 id="confirm-title" className="text-lg font-semibold text-gray-900 mb-2">
+      <div className="relative bg-surface rounded-card border border-line shadow-float p-6 max-w-md w-full mx-4">
+        <h2 id="confirm-title" className="text-[17px] font-semibold text-ink mb-2">
           {title}
         </h2>
-        <p className="text-sm text-gray-600 mb-6">{message}</p>
+        <p className="text-sm leading-[22px] text-muted mb-5">{message}</p>
 
-        <div className="flex justify-end gap-3">
+        <div className="flex justify-end gap-2.5">
           <button
             ref={cancelRef}
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:opacity-50"
+            className={cn(btnGhost, 'px-4')}
           >
             {t.cancel}
           </button>
@@ -66,10 +68,10 @@ export function ConfirmDialog({
             onClick={onConfirm}
             disabled={loading}
             className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium text-white focus:outline-none focus:ring-2 disabled:opacity-50',
+              'inline-flex items-center justify-center h-10 px-[18px] rounded-control border text-sm font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
               variant === 'danger'
-                ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                : 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500'
+                ? 'bg-danger border-danger text-white hover:opacity-90'
+                : 'bg-warn border-warn text-white hover:opacity-90'
             )}
           >
             {loading ? t.loading : confirmLabel}

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Image, Plus, TriangleAlert, Upload } from 'lucide-react'
 import { useSetting, useUpdateSetting, uploadAsset } from '../../api/settings'
 import type { HomeContent, HomeSponsor, HomeStep, LandmarkSlide } from '../../api/types'
 import { HOME_DEFAULTS } from '../../lib/homeDefaults'
@@ -8,10 +9,41 @@ import { appInfoSchema, type AppInfoForm } from '../../lib/validation'
 import { FormField } from '../../components/FormField'
 import { TranslationsEditor } from '../../components/TranslationsEditor'
 import { useToast } from '../../components/Toast'
+import {
+  btnAddDashed,
+  btnGhost,
+  btnPrimary,
+  btnRowAction,
+  btnSecondary,
+  card,
+  overline,
+} from '../../components/ui'
 import { t } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 
-type Section = 'branding' | 'texts' | 'appinfo' | 'content' | 'home'
+type Section = 'branding' | 'appinfo' | 'content' | 'texts' | 'home'
+
+const sectionCard = cn(card, 'p-6 flex flex-col gap-5')
+
+const sectionTitle = 'm-0 text-[17px] font-semibold text-ink'
+const sectionHint = 'm-0 mt-1.5 text-[13px] text-muted'
+
+const inputClass =
+  'block w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-ink focus:outline-2 focus:outline-gold focus:-outline-offset-[3px] focus:ring-0 focus:border-ink'
+
+const btnRowDanger = cn(
+  btnRowAction,
+  'text-danger border-danger-line hover:border-danger hover:bg-danger-tint'
+)
+
+/** Pie de tarjeta con la acción de guardado (diseño: separado por línea suave). */
+function CardFooter({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 pt-4 border-t border-line-soft">
+      <div className="ml-auto flex items-center gap-2.5">{children}</div>
+    </div>
+  )
+}
 
 function BrandingSection() {
   const toast = useToast()
@@ -38,33 +70,39 @@ function BrandingSection() {
   const currentUrl = logoSetting?.value as string | undefined
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
-      <h3 className="font-semibold text-gray-800">{t.branding}</h3>
+    <div className={sectionCard}>
+      <div>
+        <h2 className={sectionTitle}>{t.branding}</h2>
+        <p className={sectionHint}>
+          El logo se muestra en la app del jugador. JPG, PNG o WebP — máximo 5 MB.
+        </p>
+      </div>
 
-      <div className="flex items-start gap-6">
+      <div className="flex items-center gap-6">
         {currentUrl ? (
           <img
             src={currentUrl}
             alt="Logo actual"
-            className="h-24 w-24 object-contain rounded-lg border border-gray-200 bg-gray-50"
+            className="h-24 w-24 object-contain rounded-card border border-line bg-paper"
           />
         ) : (
-          <div className="h-24 w-24 flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-400 text-xs text-center">
-            Sin logo
+          <div className="h-24 w-24 flex items-center justify-center rounded-card border border-dashed border-line-strong bg-paper text-faint">
+            <Image size={22} strokeWidth={1.5} aria-hidden />
           </div>
         )}
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col items-start gap-2">
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
-            className="px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg disabled:opacity-60"
+            className={btnSecondary}
           >
-            {uploading ? t.loading : 'Subir nuevo logo'}
+            <Upload size={16} strokeWidth={1.5} aria-hidden />
+            {uploading ? t.loading : 'Subir logo'}
           </button>
-          <p className="text-xs text-gray-500">
-            JPG, PNG o WebP — máximo 5 MB. Se muestra en la app del jugador.
+          <p className="m-0 text-[12.5px] text-faint">
+            {currentUrl ? 'Logo cargado.' : 'Sin logo cargado.'}
           </p>
           <input
             ref={fileRef}
@@ -96,15 +134,17 @@ function UITextsSection() {
     }
   }
 
-  if (isLoading) return <p className="text-gray-400">{t.loading}</p>
+  if (isLoading) return <p className="text-faint">{t.loading}</p>
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
-      <h3 className="font-semibold text-gray-800">{t.uiTexts}</h3>
-      <p className="text-sm text-gray-500">
-        Textos que aparecen en la app del jugador. Edita el español y agrega traducciones para otros
-        idiomas.
-      </p>
+    <div className={sectionCard}>
+      <div>
+        <h2 className={sectionTitle}>{t.uiTexts}</h2>
+        <p className={sectionHint}>
+          Textos que aparecen en la app del jugador. Edita el español y agrega traducciones para
+          otros idiomas.
+        </p>
+      </div>
 
       <TranslationsEditor
         fields={Object.entries(texts).map(([key]) => ({ key, label: key }))}
@@ -112,15 +152,11 @@ function UITextsSection() {
         onChange={setTranslations}
       />
 
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg"
-        >
+      <CardFooter>
+        <button type="button" onClick={handleSave} className={btnPrimary}>
           {t.save}
         </button>
-      </div>
+      </CardFooter>
     </div>
   )
 }
@@ -178,14 +214,10 @@ function AppInfoSection() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4"
-      noValidate
-    >
-      <h3 className="font-semibold text-gray-800">{t.appInfo}</h3>
+    <form onSubmit={handleSubmit(onSubmit)} className={sectionCard} noValidate>
+      <h2 className={sectionTitle}>{t.appInfo}</h2>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-5">
         <FormField
           as="input"
           label={t.appName}
@@ -220,40 +252,37 @@ function AppInfoSection() {
 
       {/* Version bump prompt */}
       {showVersionPrompt && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center justify-between gap-4">
-          <p className="text-sm text-amber-800">
+        <div className="bg-warn-tint text-warn-text rounded-control px-4 py-3 text-[13px] leading-5 flex items-center justify-between gap-4">
+          <span className="flex items-start gap-2.5">
+            <TriangleAlert size={16} strokeWidth={1.5} className="shrink-0 mt-0.5" aria-hidden />
             El texto de la política ha cambiado. ¿Aumentar la versión a que los usuarios acepten la
             nueva política?
-          </p>
-          <div className="flex gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={bumpVersion}
-              className="text-xs font-medium text-amber-700 bg-white border border-amber-300 rounded px-3 py-1 hover:bg-amber-50"
-            >
+          </span>
+          <span className="flex gap-2 shrink-0">
+            <button type="button" onClick={bumpVersion} className={btnRowAction}>
               Sí, aumentar versión
             </button>
             <button
               type="button"
               onClick={() => setShowVersionPrompt(false)}
-              className="text-xs text-gray-500 hover:text-gray-700"
+              className={cn(btnGhost, 'h-8 px-2.5 text-[13px]')}
             >
               No
             </button>
-          </div>
+          </span>
         </div>
       )}
 
-      <div className="flex justify-end gap-3">
+      <CardFooter>
         <button
           type="submit"
           onClick={handleSaveClick}
           disabled={isSubmitting || !isDirty}
-          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+          className={btnPrimary}
         >
           {isSubmitting ? t.loading : t.save}
         </button>
-      </div>
+      </CardFooter>
     </form>
   )
 }
@@ -295,36 +324,33 @@ function PlainTextSetting({
     }
   }
 
-  if (isLoading) return <p className="text-gray-400">{t.loading}</p>
+  if (isLoading) return <p className="text-faint">{t.loading}</p>
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+    <div className={sectionCard}>
       <div>
-        <h3 className="font-semibold text-gray-800">{label}</h3>
-        <p className="text-sm text-gray-500">{hint}</p>
+        <h2 className={sectionTitle}>{label}</h2>
+        <p className={sectionHint}>{hint}</p>
       </div>
       <textarea
         value={value}
         onChange={(e) => setValue(e.target.value)}
         rows={12}
-        className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-800 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        className={cn(inputClass, 'p-3 resize-y')}
       />
-      <div className="flex justify-end">
+      <CardFooter>
         <button
           type="button"
           onClick={handleSave}
           disabled={updateSetting.isPending}
-          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+          className={btnPrimary}
         >
           {updateSetting.isPending ? t.loading : t.save}
         </button>
-      </div>
+      </CardFooter>
     </div>
   )
 }
-
-const inputClass =
-  'w-full rounded-lg border border-gray-300 p-2.5 text-sm text-gray-800 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500'
 
 function LabeledField({
   label,
@@ -341,20 +367,20 @@ function LabeledField({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium text-gray-700">{label}</span>
+      <span className="text-[13px] font-medium text-ink">{label}</span>
       {multiline ? (
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
           rows={rows}
-          className={inputClass}
+          className={cn(inputClass, 'py-2')}
         />
       ) : (
         <input
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className={inputClass}
+          className={cn(inputClass, 'h-10')}
         />
       )}
     </label>
@@ -489,17 +515,18 @@ function HomeContentSection() {
           <img
             src={url}
             alt={label}
-            className="h-16 w-28 shrink-0 rounded-md border border-gray-200 bg-gray-50 object-cover"
+            className="h-16 w-28 shrink-0 rounded-card border border-line bg-paper object-cover"
           />
         ) : (
-          <div className="h-16 w-28 shrink-0 flex items-center justify-center rounded-md border-2 border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400">
-            {t.noImage}
+          <div className="h-16 w-28 shrink-0 flex items-center justify-center rounded-card border border-dashed border-line-strong bg-paper text-faint">
+            <Image size={18} strokeWidth={1.5} aria-hidden />
           </div>
         )}
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-gray-700">{label}</span>
-          <div className="flex items-center gap-3">
-            <label className="cursor-pointer px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg">
+          <span className="text-[13px] font-medium text-ink">{label}</span>
+          <div className="flex items-center gap-2.5">
+            <label className={btnRowAction}>
+              <Upload size={13} strokeWidth={1.5} aria-hidden />
               {uploadingField === field ? t.loading : t.uploadImage}
               <input
                 type="file"
@@ -512,7 +539,7 @@ function HomeContentSection() {
               <button
                 type="button"
                 onClick={() => setContent((prev) => ({ ...prev, [field]: '' }))}
-                className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200 rounded-lg"
+                className={btnRowDanger}
               >
                 {t.remove}
               </button>
@@ -577,14 +604,14 @@ function HomeContentSection() {
     }
   }
 
-  if (isLoading) return <p className="text-gray-400">{t.loading}</p>
+  if (isLoading) return <p className="text-faint">{t.loading}</p>
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
+      <div className={sectionCard}>
         <div>
-          <h3 className="font-semibold text-gray-800">{t.homeContent}</h3>
-          <p className="text-sm text-gray-500">{t.homeContentHint}</p>
+          <h2 className={sectionTitle}>{t.homeContent}</h2>
+          <p className={sectionHint}>{t.homeContentHint}</p>
         </div>
         <LabeledField
           label={t.homeHeroIntro}
@@ -611,7 +638,7 @@ function HomeContentSection() {
           onChange={(v) => setField('section_title', v)}
         />
 
-        <h4 className="pt-2 text-sm font-semibold text-gray-600">{t.homeNeedSection}</h4>
+        <h3 className={cn(overline, 'pt-2 m-0')}>{t.homeNeedSection}</h3>
         <LabeledField
           label={t.fieldTitle}
           value={content.need_title ?? ''}
@@ -625,7 +652,7 @@ function HomeContentSection() {
           onChange={(v) => setField('need_body', v)}
         />
 
-        <h4 className="pt-2 text-sm font-semibold text-gray-600">{t.homeSolutionSection}</h4>
+        <h3 className={cn(overline, 'pt-2 m-0')}>{t.homeSolutionSection}</h3>
         <LabeledField
           label={t.fieldTitle}
           value={content.solution_title ?? ''}
@@ -639,7 +666,7 @@ function HomeContentSection() {
           onChange={(v) => setField('solution_body', v)}
         />
 
-        <h4 className="pt-2 text-sm font-semibold text-gray-600">{t.homeHowSection}</h4>
+        <h3 className={cn(overline, 'pt-2 m-0')}>{t.homeHowSection}</h3>
         <LabeledField
           label={t.fieldTitle}
           value={content.how_title ?? ''}
@@ -664,7 +691,7 @@ function HomeContentSection() {
           </div>
         ))}
 
-        <h4 className="pt-2 text-sm font-semibold text-gray-600">{t.homeVisionSection}</h4>
+        <h3 className={cn(overline, 'pt-2 m-0')}>{t.homeVisionSection}</h3>
         <LabeledField
           label={t.fieldTitle}
           value={content.vision_title ?? ''}
@@ -712,7 +739,7 @@ function HomeContentSection() {
           onChange={(v) => setField('play_outro', v)}
         />
 
-        <h4 className="pt-2 text-sm font-semibold text-gray-600">{t.homeClosingSection}</h4>
+        <h3 className={cn(overline, 'pt-2 m-0')}>{t.homeClosingSection}</h3>
         <LabeledField
           label={t.fieldTitle}
           value={content.closing_title ?? ''}
@@ -725,32 +752,35 @@ function HomeContentSection() {
         />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+      <div className={sectionCard}>
         <div>
-          <h3 className="font-semibold text-gray-800">{t.homeImages}</h3>
-          <p className="text-sm text-gray-500">{t.homeImagesHint}</p>
+          <h2 className={sectionTitle}>{t.homeImages}</h2>
+          <p className={sectionHint}>{t.homeImagesHint}</p>
         </div>
         {imageRow(t.homeHeroImage, 'hero_image_url', 'home_hero')}
         {imageRow(t.homeBrandMark, 'brand_mark_url', 'home_brand')}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+      <div className={sectionCard}>
         <div>
-          <h3 className="font-semibold text-gray-800">{t.homeLandmarks}</h3>
-          <p className="text-sm text-gray-500">{t.homeLandmarksHint}</p>
+          <h2 className={sectionTitle}>{t.homeLandmarks}</h2>
+          <p className={sectionHint}>{t.homeLandmarksHint}</p>
         </div>
 
         {landmarks.map((slide, index) => (
-          <div key={index} className="flex items-start gap-4 rounded-lg border border-gray-200 p-4">
+          <div
+            key={index}
+            className="flex items-start gap-4 rounded-control border border-line p-4"
+          >
             {slide.image_url ? (
               <img
                 src={slide.image_url}
                 alt={slide.title || `Imagen ${index + 1}`}
-                className="h-24 w-16 shrink-0 rounded-md border border-gray-200 bg-gray-50 object-cover"
+                className="h-24 w-16 shrink-0 rounded-card border border-line bg-paper object-cover"
               />
             ) : (
-              <div className="h-24 w-16 shrink-0 flex items-center justify-center rounded-md border-2 border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400 text-center">
-                {t.noImage}
+              <div className="h-24 w-16 shrink-0 flex items-center justify-center rounded-card border border-dashed border-line-strong bg-paper text-faint">
+                <Image size={18} strokeWidth={1.5} aria-hidden />
               </div>
             )}
             <div className="flex-1 grid grid-cols-2 gap-3">
@@ -764,8 +794,9 @@ function HomeContentSection() {
                 value={slide.caption ?? ''}
                 onChange={(v) => setLandmark(index, { caption: v })}
               />
-              <div className="col-span-2 flex items-center gap-3">
-                <label className="cursor-pointer px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg">
+              <div className="col-span-2 flex items-center gap-2.5">
+                <label className={btnRowAction}>
+                  <Upload size={13} strokeWidth={1.5} aria-hidden />
                   {uploadingLandmark === index ? t.loading : t.uploadImage}
                   <input
                     type="file"
@@ -777,7 +808,7 @@ function HomeContentSection() {
                 <button
                   type="button"
                   onClick={() => setLandmarks((prev) => prev.filter((_, i) => i !== index))}
-                  className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200 rounded-lg"
+                  className={btnRowDanger}
                 >
                   {t.remove}
                 </button>
@@ -791,33 +822,37 @@ function HomeContentSection() {
             type="button"
             disabled={landmarks.length >= 8}
             onClick={() => setLandmarks((prev) => [...prev, { image_url: '' }])}
-            className="px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
+            className={btnAddDashed}
           >
+            <Plus size={15} strokeWidth={1.5} aria-hidden />
             {t.addLandmark}
           </button>
           {landmarks.length >= 8 && (
-            <span className="text-xs text-gray-500">{t.landmarkLimitReached}</span>
+            <span className="text-[12.5px] text-faint">{t.landmarkLimitReached}</span>
           )}
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+      <div className={sectionCard}>
         <div>
-          <h3 className="font-semibold text-gray-800">{t.homeSponsors}</h3>
-          <p className="text-sm text-gray-500">{t.homeSponsorsHint}</p>
+          <h2 className={sectionTitle}>{t.homeSponsors}</h2>
+          <p className={sectionHint}>{t.homeSponsorsHint}</p>
         </div>
 
         {sponsors.map((sponsor, index) => (
-          <div key={index} className="flex items-start gap-4 rounded-lg border border-gray-200 p-4">
+          <div
+            key={index}
+            className="flex items-start gap-4 rounded-control border border-line p-4"
+          >
             {sponsor.image_url ? (
               <img
                 src={sponsor.image_url}
                 alt={sponsor.name || 'Banner'}
-                className="h-16 w-28 shrink-0 rounded-md border border-gray-200 bg-gray-50 object-cover"
+                className="h-16 w-28 shrink-0 rounded-card border border-line bg-paper object-cover"
               />
             ) : (
-              <div className="h-16 w-28 shrink-0 flex items-center justify-center rounded-md border-2 border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400">
-                Sin imagen
+              <div className="h-16 w-28 shrink-0 flex items-center justify-center rounded-card border border-dashed border-line-strong bg-paper text-faint">
+                <Image size={18} strokeWidth={1.5} aria-hidden />
               </div>
             )}
             <div className="flex-1 grid grid-cols-2 gap-3">
@@ -831,8 +866,9 @@ function HomeContentSection() {
                 value={sponsor.link_url ?? ''}
                 onChange={(v) => setSponsor(index, { link_url: v })}
               />
-              <div className="col-span-2 flex items-center gap-3">
-                <label className="cursor-pointer px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg">
+              <div className="col-span-2 flex items-center gap-2.5">
+                <label className={btnRowAction}>
+                  <Upload size={13} strokeWidth={1.5} aria-hidden />
                   {uploadingIndex === index ? t.loading : t.uploadImage}
                   <input
                     type="file"
@@ -844,7 +880,7 @@ function HomeContentSection() {
                 <button
                   type="button"
                   onClick={() => setSponsors((prev) => prev.filter((_, i) => i !== index))}
-                  className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200 rounded-lg"
+                  className={btnRowDanger}
                 >
                   {t.remove}
                 </button>
@@ -857,22 +893,23 @@ function HomeContentSection() {
           <button
             type="button"
             onClick={() => setSponsors((prev) => [...prev, { name: '', image_url: '' }])}
-            className="px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg"
+            className={btnAddDashed}
           >
+            <Plus size={15} strokeWidth={1.5} aria-hidden />
             {t.addSponsor}
           </button>
         </div>
-      </div>
 
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={updateSetting.isPending}
-          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
-        >
-          {updateSetting.isPending ? t.loading : t.save}
-        </button>
+        <CardFooter>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={updateSetting.isPending}
+            className={btnPrimary}
+          >
+            {updateSetting.isPending ? t.loading : t.save}
+          </button>
+        </CardFooter>
       </div>
     </div>
   )
@@ -880,7 +917,7 @@ function HomeContentSection() {
 
 function ContentSection() {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <PlainTextSetting
         settingKey="game_instructions"
         label={t.gameInstructions}
@@ -900,35 +937,33 @@ export function SettingsPage() {
 
   const SECTIONS: { key: Section; label: string }[] = [
     { key: 'branding', label: t.branding },
-    { key: 'texts', label: t.uiTexts },
     { key: 'appinfo', label: t.appInfo },
     { key: 'content', label: t.legalContent },
+    { key: 'texts', label: t.uiTexts },
     { key: 'home', label: t.homeContent },
   ]
 
   return (
-    <div className="flex flex-col gap-6">
-      <h2 className="text-xl font-bold text-gray-900">{t.settings}</h2>
-
-      <div className="flex border-b border-gray-200">
+    <div className="grid grid-cols-[220px_1fr] gap-8 items-start">
+      <nav className="sticky top-0 flex flex-col gap-0.5">
         {SECTIONS.map((s) => (
           <button
             key={s.key}
             type="button"
             onClick={() => setSection(s.key)}
             className={cn(
-              'px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
+              'px-3.5 py-2.5 text-[13.5px] text-left border-l-[3px] cursor-pointer transition-colors',
               section === s.key
-                ? 'border-indigo-600 text-indigo-700'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                ? 'border-gold bg-surface rounded-r-control font-semibold text-ink'
+                : 'border-transparent text-muted hover:text-ink'
             )}
           >
             {s.label}
           </button>
         ))}
-      </div>
+      </nav>
 
-      <div className="max-w-3xl">
+      <div className="flex flex-col gap-5 max-w-3xl">
         {section === 'branding' && <BrandingSection />}
         {section === 'texts' && <UITextsSection />}
         {section === 'appinfo' && <AppInfoSection />}

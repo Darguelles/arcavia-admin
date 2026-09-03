@@ -26,6 +26,15 @@ export const changePasswordSchema = z
   })
 export type ChangePasswordForm = z.infer<typeof changePasswordSchema>
 
+// Team (admin-panel users)
+
+export const teamCreateSchema = z.object({
+  email: z.string().email('Correo inválido'),
+  display_name: z.string().min(1, 'Requerido'),
+  role: z.enum(['admin', 'staff']),
+})
+export type TeamCreateForm = z.infer<typeof teamCreateSchema>
+
 // City
 
 export const citySchema = z.object({

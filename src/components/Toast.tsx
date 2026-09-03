@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { Check, CircleAlert, Info } from 'lucide-react'
 import { cn } from '../lib/utils'
 
 type ToastVariant = 'success' | 'error' | 'info'
@@ -19,6 +20,12 @@ const ToastContext = createContext<ToastContextValue | null>(null)
 
 let nextId = 0
 
+const ICONS: Record<ToastVariant, ReactNode> = {
+  success: <Check aria-hidden size={18} strokeWidth={1.5} className="text-gold shrink-0" />,
+  error: <CircleAlert aria-hidden size={18} strokeWidth={1.5} className="shrink-0" />,
+  info: <Info aria-hidden size={18} strokeWidth={1.5} className="text-gold shrink-0" />,
+}
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
 
@@ -35,7 +42,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ show, success, error }}>
       {children}
       <div
-        className="fixed bottom-4 right-4 z-50 flex flex-col gap-2"
+        className="fixed bottom-4 right-4 z-50 flex flex-col gap-2.5"
         role="region"
         aria-label="Notificaciones"
       >
@@ -44,12 +51,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={t.id}
             role="alert"
             className={cn(
-              'px-4 py-3 rounded-lg shadow-lg text-white text-sm max-w-sm animate-fade-in',
-              t.variant === 'success' && 'bg-green-600',
-              t.variant === 'error' && 'bg-red-600',
-              t.variant === 'info' && 'bg-gray-700'
+              'flex items-center gap-2.5 rounded-control px-4 py-3 text-sm max-w-sm shadow-float',
+              t.variant === 'error' ? 'bg-danger text-white' : 'bg-ink text-cream'
             )}
           >
+            {ICONS[t.variant]}
             {t.message}
           </div>
         ))}

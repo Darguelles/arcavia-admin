@@ -3,6 +3,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft } from 'lucide-react'
 import { useMission } from '../../api/missions'
 import { useCity } from '../../api/cities'
 import { useCategories } from '../../api/categories'
@@ -22,13 +23,17 @@ import { FormField } from '../../components/FormField'
 import { MapPicker } from '../../components/MapPicker'
 import { TranslationsEditor } from '../../components/TranslationsEditor'
 import { useToast } from '../../components/Toast'
+import { btnGhost, btnIcon, btnPrimary, card, overline } from '../../components/ui'
 import { ChallengesEditor, DraftChallenges, challengeFormToCreate } from './ChallengesEditor'
 import { QRSection } from './QRSection'
 import { t } from '../../lib/i18n'
 import { translateApiError } from '../../lib/apiErrors'
 import { apiClient } from '../../api/client'
 import { categoryKeys } from '../../api/categories'
+import { cn } from '../../lib/utils'
 import type { Challenge, Waypoint } from '../../api/types'
+
+const checkboxClass = 'h-4 w-4 rounded-chip border-line-strong accent-gold'
 
 export function WaypointEditor() {
   const { missionId, waypointId } = useParams<{ missionId: string; waypointId?: string }>()
@@ -190,30 +195,35 @@ export function WaypointEditor() {
     )
   }
 
-  if (isEdit && isLoading) return <p className="text-gray-400 p-6">{t.loading}</p>
+  if (isEdit && isLoading) return <p className="text-faint p-6">{t.loading}</p>
   if (!phaseId && !isEdit) {
-    return <p className="text-red-600 p-6">Falta la fase (phaseId).</p>
+    return <p className="text-danger p-6">Falta la fase (phaseId).</p>
   }
 
   const cats = categories ?? []
 
   return (
     <div className="max-w-3xl flex flex-col gap-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <button
           type="button"
           onClick={() => navigate(`/admin/missions/${missionId}?tab=fases`)}
-          className="text-sm text-gray-500 hover:text-gray-700"
+          className={cn(btnIcon, 'h-9 w-9')}
+          aria-label={t.back}
+          title={t.back}
         >
-          ← {t.back}
+          <ArrowLeft size={16} strokeWidth={1.5} />
         </button>
-        <h2 className="text-xl font-bold text-gray-900">
-          {isEdit ? waypoint?.name : `${t.addWaypoint}`}
-        </h2>
+        <div>
+          {mission?.name && <p className={cn(overline, 'm-0')}>{mission.name}</p>}
+          <h2 className="m-0 mt-1 text-2xl leading-[30px] font-semibold text-ink">
+            {isEdit ? waypoint?.name : `${t.addWaypoint}`}
+          </h2>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
-        <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+        <div className={cn(card, 'p-6 flex flex-col gap-4')}>
           <div className="grid grid-cols-2 gap-4">
             <FormField
               as="input"
@@ -276,7 +286,9 @@ export function WaypointEditor() {
 
           {/* Location */}
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">{t.mapAreaLabel}</label>
+            <label className="text-[13px] font-medium text-ink mb-1.5 block">
+              {t.mapAreaLabel}
+            </label>
             <MapPicker
               lat={lat}
               lng={lng}
@@ -288,15 +300,15 @@ export function WaypointEditor() {
               height="360px"
             />
             {(errors.lat || errors.lng) && (
-              <p className="text-xs text-red-600 mt-1">Coloca el pin en el mapa.</p>
+              <p className="text-[13px] text-danger mt-1.5">Coloca el pin en el mapa.</p>
             )}
           </div>
 
           {/* Geolocation check-in is the always-on presence proof (uses the
               pin + tolerance_radius_m above as the geofence). QR and an
               on-site keyword are optional additional factors. */}
-          <div className="border border-gray-200 rounded-lg p-4 flex flex-col gap-4">
-            <h4 className="text-sm font-semibold text-gray-800">{t.validationSection}</h4>
+          <div className="rounded-card border border-line p-5 flex flex-col gap-4">
+            <h4 className="m-0 text-[15px] font-semibold text-ink">{t.validationSection}</h4>
 
             <div className="grid grid-cols-3 gap-4">
               <FormField
@@ -335,14 +347,14 @@ export function WaypointEditor() {
               <input
                 id="wp_requires_qr"
                 type="checkbox"
-                className="h-4 w-4 mt-0.5 rounded border-gray-300 text-indigo-600"
+                className={cn(checkboxClass, 'mt-0.5')}
                 {...register('requires_qr')}
               />
               <div className="text-sm">
-                <label htmlFor="wp_requires_qr" className="font-medium text-gray-700">
+                <label htmlFor="wp_requires_qr" className="font-medium text-ink">
                   {t.requireQr}
                 </label>
-                <p className="text-xs text-gray-400">{t.requireQrHint}</p>
+                <p className="m-0 text-[13px] text-muted">{t.requireQrHint}</p>
               </div>
             </div>
 
@@ -350,14 +362,14 @@ export function WaypointEditor() {
               <input
                 id="wp_requires_keyword"
                 type="checkbox"
-                className="h-4 w-4 mt-0.5 rounded border-gray-300 text-indigo-600"
+                className={cn(checkboxClass, 'mt-0.5')}
                 {...register('requires_keyword')}
               />
               <div className="text-sm">
-                <label htmlFor="wp_requires_keyword" className="font-medium text-gray-700">
+                <label htmlFor="wp_requires_keyword" className="font-medium text-ink">
                   {t.requireKeyword}
                 </label>
-                <p className="text-xs text-gray-400">{t.requireKeywordHint}</p>
+                <p className="m-0 text-[13px] text-muted">{t.requireKeywordHint}</p>
               </div>
             </div>
 
@@ -385,14 +397,14 @@ export function WaypointEditor() {
             <input
               id="wp_active"
               type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+              className={checkboxClass}
               {...register('is_active')}
             />
-            <label htmlFor="wp_active" className="text-sm font-medium text-gray-700">
+            <label htmlFor="wp_active" className="text-sm font-medium text-ink">
               {t.active}
             </label>
             <span
-              className={activeNeedsQuestion ? 'text-xs text-red-600' : 'text-xs text-gray-400'}
+              className={activeNeedsQuestion ? 'text-xs text-danger' : 'text-xs text-faint'}
               role={activeNeedsQuestion ? 'alert' : undefined}
             >
               {t.waypointNoChallengesHint}
@@ -419,9 +431,9 @@ export function WaypointEditor() {
       {/* On create, questions are added inline and saved together with the
           point below — no separate "save, come back, then activate" step. */}
       {!isEdit && (
-        <section className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="font-semibold text-gray-800">{t.questions}</h3>
-          <p className="text-xs text-gray-400 mt-0.5 mb-4">{t.questionsHint}</p>
+        <section className={cn(card, 'p-6')}>
+          <h3 className="m-0 text-[17px] font-semibold text-ink">{t.questions}</h3>
+          <p className="m-0 mt-1 mb-4 text-[13px] text-muted">{t.questionsHint}</p>
           <DraftChallenges onChange={setDrafts} />
         </section>
       )}
@@ -430,7 +442,7 @@ export function WaypointEditor() {
         <button
           type="button"
           onClick={() => navigate(`/admin/missions/${missionId}?tab=fases`)}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+          className={btnGhost}
         >
           {t.cancel}
         </button>
@@ -438,7 +450,7 @@ export function WaypointEditor() {
           type="button"
           onClick={handleSubmit(onSubmit)}
           disabled={isSubmitting || (isEdit && !isDirty)}
-          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+          className={btnPrimary}
         >
           {isSubmitting ? t.loading : isEdit ? t.save : t.create}
         </button>
@@ -447,8 +459,8 @@ export function WaypointEditor() {
       {/* Challenges + QR only make sense once the waypoint exists */}
       {isEdit && waypointId && (
         <>
-          <section className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-800 mb-4">{t.questions}</h3>
+          <section className={cn(card, 'p-6')}>
+            <h3 className="m-0 mb-4 text-[17px] font-semibold text-ink">{t.questions}</h3>
             <ChallengesEditor waypointId={waypointId} />
           </section>
 
@@ -456,8 +468,8 @@ export function WaypointEditor() {
               above — QR stays available as a fallback, but de-emphasized for
               waypoints that rely on geolocation (+ keyword) instead. */}
           {requiresQr && (
-            <section className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="font-semibold text-gray-800 mb-4">{t.qrTab}</h3>
+            <section className={cn(card, 'p-6')}>
+              <h3 className="m-0 mb-4 text-[17px] font-semibold text-ink">{t.qrTab}</h3>
               <QRSection
                 waypointId={waypointId}
                 waypointName={waypoint?.name ?? ''}

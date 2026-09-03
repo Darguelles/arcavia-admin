@@ -1,6 +1,9 @@
 // DTO types mirroring backend Pydantic models
 
-export type Role = 'admin' | 'player'
+export type Role = 'root' | 'admin' | 'staff' | 'player'
+
+/** Roles allowed into the admin panel. */
+export const ADMIN_ROLES: readonly Role[] = ['root', 'admin', 'staff']
 
 export interface TokenPayload {
   sub: string
@@ -8,10 +11,21 @@ export interface TokenPayload {
   exp: number
 }
 
+// Admin-panel logins are two-step: the password step returns only
+// mfa + mfa_token; the /auth/mfa/* step returns the full session.
 export interface LoginResponse {
-  access_token: string
+  access_token?: string
   token_type: 'bearer'
+  role?: Role
+  user_id?: string
   force_password_reset?: boolean
+  mfa?: 'enroll' | 'totp'
+  mfa_token?: string
+}
+
+export interface MfaEnrollStartResponse {
+  secret: string
+  otpauth_uri: string
 }
 
 export interface ApiError {

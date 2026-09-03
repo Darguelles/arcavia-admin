@@ -15,6 +15,8 @@ import { ReviewQueuePage } from './features/reviewQueue/ReviewQueuePage'
 import { UsersPage } from './features/users/UsersPage'
 import { UserDetail } from './features/users/UserDetail'
 import { SettingsPage } from './features/settings/SettingsPage'
+import { TeamPage } from './features/team/TeamPage'
+import { AuditLogPage } from './features/audit/AuditLogPage'
 
 export default function App() {
   return (
@@ -46,6 +48,8 @@ export default function App() {
                 <Route path="review-queue" element={<ReviewQueuePage />} />
                 <Route path="users" element={<UsersPage />} />
                 <Route path="users/:id" element={<UserDetail />} />
+                <Route path="team" element={<TeamPage />} />
+                <Route path="audit" element={<AuditLogPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Routes>
             </Layout>

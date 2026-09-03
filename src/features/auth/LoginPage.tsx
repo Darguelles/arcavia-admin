@@ -1,90 +1,286 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../auth/useAuth'
+import { QRCodeSVG } from 'qrcode.react'
+import { Check, CircleAlert, ShieldCheck } from 'lucide-react'
+import { useAuth, type MfaChallenge } from '../../auth/useAuth'
 import { loginSchema, type LoginForm } from '../../lib/validation'
 import { FormField } from '../../components/FormField'
+import { btnPrimary, linkAction } from '../../components/ui'
+import { cn } from '../../lib/utils'
 import { t } from '../../lib/i18n'
+import { translateApiError } from '../../lib/apiErrors'
 import { ApiClientError } from '../../api/client'
-import { DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD } from '../../config'
+import { AuthShell, AuthHeading } from './AuthShell'
+
+type Step =
+  | { name: 'password' }
+  | { name: 'totp'; mfaToken: string }
+  | { name: 'enroll'; mfaToken: string; secret: string; otpauthUri: string }
+  | { name: 'recovery'; codes: string[]; forceReset: boolean }
+
+const submitButton = cn(btnPrimary, 'h-11 w-full text-[15px]')
+
+function AlertMessage({ children }: { children: React.ReactNode }) {
+  return (
+    <p role="alert" className="m-0 flex items-center gap-2 text-[13px] text-danger">
+      <CircleAlert aria-hidden size={15} className="shrink-0" strokeWidth={1.5} />
+      {children}
+    </p>
+  )
+}
 
 export function LoginPage() {
-  const { login } = useAuth()
+  const { login, mfaVerify, mfaEnrollStart, mfaEnrollConfirm, forceReset } = useAuth()
   const navigate = useNavigate()
+  const [step, setStep] = useState<Step>({ name: 'password' })
+  const [code, setCode] = useState('')
+  const [useRecovery, setUseRecovery] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const {
     register,
     handleSubmit,
-    setError,
+    setError: setFormError,
     formState: { errors, isSubmitting },
-  } = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: DEFAULT_ADMIN_EMAIL, password: DEFAULT_ADMIN_PASSWORD },
-  })
+  } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) })
 
-  async function onSubmit(data: LoginForm) {
-    try {
-      const result = await login(data.email, data.password)
-      if (result.force_password_reset) {
-        navigate('/admin/reset-password', { replace: true })
-      } else {
-        navigate('/admin', { replace: true })
-      }
-    } catch (err) {
-      if (err instanceof ApiClientError) {
-        setError('root', { message: err.message })
-      } else if (err instanceof Error) {
-        setError('root', { message: err.message })
-      } else {
-        setError('root', { message: t.loginError })
-      }
+  function finishLogin(mustReset: boolean) {
+    navigate(mustReset ? '/admin/reset-password' : '/admin', { replace: true })
+  }
+
+  async function startMfaStep(challenge: MfaChallenge) {
+    if (challenge.mfa === 'totp') {
+      setStep({ name: 'totp', mfaToken: challenge.mfaToken })
+    } else {
+      const enroll = await mfaEnrollStart(challenge.mfaToken)
+      setStep({
+        name: 'enroll',
+        mfaToken: challenge.mfaToken,
+        secret: enroll.secret,
+        otpauthUri: enroll.otpauth_uri,
+      })
     }
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-indigo-700">Arcavia</h1>
-          <p className="text-sm text-gray-500 mt-1">Panel de administración</p>
-        </div>
+  async function onSubmitPassword(data: LoginForm) {
+    setError(null)
+    try {
+      const result = await login(data.email, data.password)
+      if (result.kind === 'session') {
+        finishLogin(forceReset)
+      } else {
+        await startMfaStep(result.challenge)
+      }
+    } catch (err) {
+      const message =
+        err instanceof ApiClientError
+          ? translateApiError(err)
+          : err instanceof Error
+            ? err.message
+            : t.loginError
+      setFormError('root', { message })
+    }
+  }
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
-          <FormField
-            as="input"
-            label={t.email}
-            type="email"
-            autoComplete="email"
-            required
-            error={errors.email?.message}
-            {...register('email')}
-          />
+  async function onSubmitCode() {
+    setError(null)
+    setBusy(true)
+    try {
+      if (step.name === 'totp') {
+        const data = await mfaVerify(step.mfaToken, useRecovery ? { recoveryCode: code } : { code })
+        finishLogin(!!data.force_password_reset)
+      } else if (step.name === 'enroll') {
+        const data = await mfaEnrollConfirm(step.mfaToken, code)
+        setStep({
+          name: 'recovery',
+          codes: data.recovery_codes,
+          forceReset: !!data.force_password_reset,
+        })
+      }
+    } catch (err) {
+      if (
+        err instanceof ApiClientError &&
+        ['MFA_TOKEN_EXPIRED', 'INVALID_MFA_TOKEN'].includes(err.code)
+      ) {
+        setStep({ name: 'password' })
+        setCode('')
+        setError(t.mfaTokenExpired)
+      } else {
+        setError(translateApiError(err))
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
 
-          <FormField
-            as="input"
-            label={t.password}
-            type="password"
-            autoComplete="current-password"
-            required
-            error={errors.password?.message}
-            {...register('password')}
-          />
+  async function copyRecoveryCodes(codes: string[]) {
+    try {
+      await navigator.clipboard.writeText(codes.join('\n'))
+      setCopied(true)
+    } catch {
+      // clipboard unavailable — codes remain selectable
+    }
+  }
 
-          {errors.root?.message && (
-            <p role="alert" className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
-              {errors.root.message}
-            </p>
-          )}
+  function backToLogin() {
+    setStep({ name: 'password' })
+    setCode('')
+    setUseRecovery(false)
+    setError(null)
+  }
 
+  const codeForm = (title: string, hint: string, submitLabel: string, extra?: React.ReactNode) => (
+    <>
+      <AuthHeading overline={t.loginOverline} title={title} />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          void onSubmitCode()
+        }}
+        className="flex flex-col gap-[18px]"
+      >
+        <p className="m-0 text-[13px] leading-5 text-muted">{hint}</p>
+        {extra}
+        <FormField
+          as="input"
+          label={useRecovery ? t.mfaRecoveryCodeLabel : t.mfaCodeLabel}
+          type="text"
+          inputMode={useRecovery ? 'text' : 'numeric'}
+          autoComplete="one-time-code"
+          autoFocus
+          required
+          name="mfa-code"
+          value={code}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCode(e.target.value)}
+        />
+        {error && <AlertMessage>{error}</AlertMessage>}
+        <button type="submit" disabled={busy || code.trim().length === 0} className={submitButton}>
+          {busy ? t.loading : submitLabel}
+        </button>
+        {step.name === 'totp' && (
           <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg py-2.5 text-sm transition-colors disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 mt-2"
+            type="button"
+            onClick={() => {
+              setUseRecovery(!useRecovery)
+              setCode('')
+              setError(null)
+            }}
+            className={cn(linkAction, 'self-start')}
           >
-            {isSubmitting ? t.loading : t.loginButton}
+            {useRecovery ? t.mfaUseTotpCode : t.mfaUseRecoveryCode}
           </button>
-        </form>
-      </div>
-    </div>
+        )}
+        <button
+          type="button"
+          onClick={backToLogin}
+          className="self-start cursor-pointer border-0 bg-transparent p-0 text-[13px] text-muted hover:text-ink"
+        >
+          {t.backToLogin}
+        </button>
+      </form>
+    </>
+  )
+
+  return (
+    <AuthShell>
+      {step.name === 'password' && (
+        <>
+          <AuthHeading overline={t.loginOverline} title={t.loginWelcome} />
+          <form
+            onSubmit={handleSubmit(onSubmitPassword)}
+            className="flex flex-col gap-[18px]"
+            noValidate
+          >
+            <FormField
+              as="input"
+              label={t.email}
+              type="email"
+              autoComplete="email"
+              required
+              error={errors.email?.message}
+              {...register('email')}
+            />
+
+            <FormField
+              as="input"
+              label={t.password}
+              type="password"
+              autoComplete="current-password"
+              required
+              error={errors.password?.message}
+              {...register('password')}
+            />
+
+            {(errors.root?.message || error) && (
+              <AlertMessage>{errors.root?.message ?? error}</AlertMessage>
+            )}
+
+            <button type="submit" disabled={isSubmitting} className={submitButton}>
+              {isSubmitting ? t.loading : t.loginButton}
+            </button>
+
+            <p className="m-0 flex items-center gap-2 text-[13px] text-muted">
+              <ShieldCheck aria-hidden size={15} className="shrink-0 text-gold-deep" />
+              {t.loginMfaNote}
+            </p>
+          </form>
+        </>
+      )}
+
+      {step.name === 'totp' && codeForm(t.mfaTitle, t.mfaCodeHint, t.mfaVerifyButton)}
+
+      {step.name === 'enroll' &&
+        codeForm(
+          t.mfaEnrollTitle,
+          t.mfaEnrollIntro,
+          t.mfaEnrollConfirmButton,
+          <div className="flex flex-col items-center gap-3">
+            <div className="rounded-control border border-line bg-surface p-3">
+              <QRCodeSVG value={step.otpauthUri} size={168} />
+            </div>
+            <p className="m-0 text-[13px] text-muted">{t.mfaEnrollManual}</p>
+            <code className="select-all break-all rounded-control border border-line bg-surface px-3 py-1.5 font-mono text-xs text-ink">
+              {step.secret}
+            </code>
+          </div>
+        )}
+
+      {step.name === 'recovery' && (
+        <>
+          <AuthHeading overline={t.loginOverline} title={t.mfaRecoveryCodesTitle} />
+          <div className="flex flex-col gap-[18px]">
+            <p className="m-0 rounded-control bg-warn-tint px-4 py-3 text-[13px] leading-5 text-warn-text">
+              {t.mfaRecoveryCodesHint}
+            </p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-control border border-line bg-surface p-4 font-mono">
+              {step.codes.map((c) => (
+                <code key={c} className="select-all text-sm text-ink">
+                  {c}
+                </code>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => void copyRecoveryCodes(step.codes)}
+              className={cn(linkAction, 'inline-flex items-center gap-1.5 self-start')}
+            >
+              {copied && <Check aria-hidden size={13} strokeWidth={2} />}
+              {copied ? t.mfaRecoveryCodesCopied : t.copy}
+            </button>
+            <button
+              type="button"
+              onClick={() => finishLogin(step.forceReset)}
+              className={submitButton}
+            >
+              {t.mfaRecoveryCodesContinue}
+            </button>
+          </div>
+        </>
+      )}
+    </AuthShell>
   )
 }

@@ -186,15 +186,15 @@ describe('Mission activation — readiness panel (mirrors §8.4 assert_mission_c
 describe('Mission editor — tab state in the URL', () => {
   it('?tab=fases opens the phases tab directly', async () => {
     render(<Wrapper initialEntry="/admin/missions/mission-1?tab=fases" />)
-    expect(await screen.findByRole('button', { name: `+ ${t.addPhase}` })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: t.addPhase })).toBeInTheDocument()
   })
 
   it('switching tabs works from a URL-driven state', async () => {
     const user = userEvent.setup()
     render(<Wrapper initialEntry="/admin/missions/mission-1?tab=fases" />)
-    await screen.findByRole('button', { name: `+ ${t.addPhase}` })
+    await screen.findByRole('button', { name: t.addPhase })
 
-    await user.click(screen.getByRole('button', { name: t.categoriesTab }))
+    await user.click(screen.getByRole('button', { name: new RegExp(`^${t.categoriesTab}`) }))
     expect(await screen.findByText(t.thresholdHint)).toBeInTheDocument()
   })
 })

@@ -2,12 +2,14 @@ import { useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { campaignSchema, type CampaignForm as CampaignFormData } from '../../lib/validation'
 import { useCampaign, useCreateCampaign, useUpdateCampaign } from '../../api/campaigns'
 import { useCities } from '../../api/cities'
 import { FormField } from '../../components/FormField'
 import { TranslationsEditor } from '../../components/TranslationsEditor'
 import { useToast } from '../../components/Toast'
+import { btnGhost, btnIcon, btnPrimary, card } from '../../components/ui'
 import { t } from '../../lib/i18n'
 import { ApiClientError } from '../../api/client'
 import { useCityFilter } from '../../components/Layout'
@@ -75,7 +77,7 @@ export function CampaignForm() {
     }
   }
 
-  if (isEdit && isLoading) return <p className="text-gray-400 p-6">{t.loading}</p>
+  if (isEdit && isLoading) return <p className="text-faint p-6">{t.loading}</p>
 
   return (
     <div className="max-w-2xl">
@@ -83,17 +85,19 @@ export function CampaignForm() {
         <button
           type="button"
           onClick={() => navigate('/admin/campaigns')}
-          className="text-sm text-gray-500 hover:text-gray-700"
+          className={btnIcon}
+          aria-label={t.back}
+          title={t.back}
         >
-          ← {t.back}
+          <ArrowLeft size={18} strokeWidth={1.5} />
         </button>
-        <h2 className="text-xl font-bold text-gray-900">
+        <h2 className="text-2xl font-semibold text-ink">
           {isEdit ? `Editar campaña: ${campaign?.name ?? ''}` : 'Nueva campaña'}
         </h2>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6" noValidate>
-        <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4">
+        <div className={`${card} p-6 flex flex-col gap-5`}>
           <FormField
             as="select"
             label={t.cities}
@@ -124,7 +128,7 @@ export function CampaignForm() {
             {...register('description')}
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <FormField
               as="input"
               label={t.startDate}
@@ -145,10 +149,10 @@ export function CampaignForm() {
             <input
               id="camp_active"
               type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+              className="h-4 w-4 rounded-chip border-line-strong accent-gold"
               {...register('is_active')}
             />
-            <label htmlFor="camp_active" className="text-sm font-medium text-gray-700">
+            <label htmlFor="camp_active" className="text-sm font-medium text-ink">
               {t.active}
             </label>
           </div>
@@ -169,18 +173,14 @@ export function CampaignForm() {
           />
         </div>
 
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => navigate('/admin/campaigns')}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
+        <div className="flex justify-end gap-3 border-t border-line-soft pt-4">
+          <button type="button" onClick={() => navigate('/admin/campaigns')} className={btnGhost}>
             {t.cancel}
           </button>
           <button
             type="submit"
             disabled={isSubmitting || (!isDirty && isEdit)}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+            className={btnPrimary}
           >
             {isSubmitting ? t.loading : t.save}
           </button>

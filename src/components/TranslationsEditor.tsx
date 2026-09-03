@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { t } from '../lib/i18n'
 import { cn } from '../lib/utils'
 
@@ -26,6 +27,9 @@ const LOCALE_LABELS: Record<string, string> = {
   de: 'Alemán',
 }
 
+const fieldClass =
+  'block w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-sm text-ink focus:outline-2 focus:outline-gold focus:-outline-offset-[3px] focus:ring-0 focus:border-ink'
+
 /**
  * Reusable translations editor shared across campaigns, missions, challenges, options.
  * Edits the `translations` JSONB field (spec §6.9).
@@ -49,20 +53,26 @@ export function TranslationsEditor({
   }
 
   return (
-    <div className={cn('border border-gray-200 rounded-lg', className)}>
+    <div className={cn('border border-line rounded-control', className)}>
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-ink rounded-control cursor-pointer hover:bg-paper-hover"
         aria-expanded={isOpen}
       >
         <span>{t.otherLanguages}</span>
-        <span className="text-gray-400">{isOpen ? '▲' : '▼'}</span>
+        <span className="text-faint" aria-hidden>
+          {isOpen ? (
+            <ChevronUp size={16} strokeWidth={1.5} />
+          ) : (
+            <ChevronDown size={16} strokeWidth={1.5} />
+          )}
+        </span>
       </button>
 
       {isOpen && (
-        <div className="px-4 pb-4 border-t border-gray-100">
-          <p className="text-xs text-gray-500 mb-3 mt-2">{t.otherLanguagesHint}</p>
+        <div className="px-4 pb-4 border-t border-line-soft">
+          <p className="text-[13px] text-muted mb-3 mt-2.5">{t.otherLanguagesHint}</p>
 
           <div className="flex gap-2 mb-4">
             {supportedLocales.map((loc) => (
@@ -71,10 +81,10 @@ export function TranslationsEditor({
                 type="button"
                 onClick={() => setSelectedLocale(loc)}
                 className={cn(
-                  'px-3 py-1 rounded text-xs font-medium border',
+                  'h-8 px-3 rounded-control text-[13px] font-medium border cursor-pointer transition-colors',
                   selectedLocale === loc
-                    ? 'bg-indigo-50 border-indigo-400 text-indigo-700'
-                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                    ? 'bg-gold-tint border-gold text-gold-text'
+                    : 'border-line-strong text-muted hover:bg-paper-hover hover:text-ink'
                 )}
               >
                 {LOCALE_LABELS[loc] ?? loc.toUpperCase()}
@@ -84,20 +94,20 @@ export function TranslationsEditor({
 
           <div className="flex flex-col gap-3">
             {fields.map((field) => (
-              <div key={field.key} className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-600">
+              <div key={field.key} className="flex flex-col gap-1.5">
+                <label className="text-[13px] font-medium text-ink">
                   {field.label} ({LOCALE_LABELS[selectedLocale] ?? selectedLocale})
                 </label>
                 {field.multiline ? (
                   <textarea
-                    className="block w-full rounded border border-gray-300 px-3 py-2 text-sm resize-y min-h-[60px]"
+                    className={cn(fieldClass, 'resize-y min-h-[60px]')}
                     value={value[selectedLocale]?.[field.key] ?? ''}
                     onChange={(e) => setField(selectedLocale, field.key, e.target.value)}
                   />
                 ) : (
                   <input
                     type="text"
-                    className="block w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                    className={fieldClass}
                     value={value[selectedLocale]?.[field.key] ?? ''}
                     onChange={(e) => setField(selectedLocale, field.key, e.target.value)}
                   />

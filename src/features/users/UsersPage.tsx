@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Search } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useUsers } from '../../api/users'
-import type { Role, User } from '../../api/types'
-import { DataTable, Pagination } from '../../components/DataTable'
+import { ADMIN_ROLES, type Role, type User } from '../../api/types'
+import { DataTable } from '../../components/DataTable'
+import { Badge, btnRowAction } from '../../components/ui'
 import { t } from '../../lib/i18n'
-import { formatDate, formatDateTime } from '../../lib/utils'
+import { cn, formatDate, formatDateTime } from '../../lib/utils'
 
 const LIMIT = 20
 
@@ -19,6 +21,40 @@ const SORT_KEY: Record<string, string> = {
 }
 
 type StatusFilter = '' | 'active' | 'inactive'
+
+/** Initials for the row avatar: first letters of the first two name words. */
+function initials(u: User): string {
+  const src = (u.display_name || u.email).trim()
+  return src
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w.charAt(0))
+    .join('')
+    .toUpperCase()
+}
+
+function Avatar({ user }: { user: User }) {
+  const ini = initials(user)
+  const isAdmin = ADMIN_ROLES.includes(user.role)
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+        !ini
+          ? 'bg-line-soft text-faint'
+          : isAdmin
+            ? 'bg-ink text-cream'
+            : 'bg-gold-tint text-gold-deep'
+      )}
+    >
+      {ini || '·'}
+    </span>
+  )
+}
+
+const inputCls =
+  'h-10 rounded-control border border-line-strong bg-surface px-2.5 text-[13.5px] text-ink focus:outline-none focus:border-gold'
 
 export function UsersPage() {
   const navigate = useNavigate()
@@ -75,11 +111,16 @@ export function UsersPage() {
       header: t.email,
       meta: { sortable: true },
       cell: ({ row }) => (
-        <div>
-          <p className="font-medium text-gray-900">{row.original.email}</p>
-          {row.original.display_name && (
-            <p className="text-xs text-gray-500">{row.original.display_name}</p>
-          )}
+        <div className="flex items-center gap-3">
+          <Avatar user={row.original} />
+          <div>
+            <p className="font-medium text-ink">
+              {row.original.display_name || row.original.email}
+            </p>
+            {row.original.display_name && (
+              <p className="mt-0.5 text-xs text-faint">{row.original.email}</p>
+            )}
+          </div>
         </div>
       ),
     },
@@ -88,15 +129,9 @@ export function UsersPage() {
       header: t.colRole,
       meta: { sortable: true },
       cell: ({ row }) => (
-        <span
-          className={`px-2 py-0.5 rounded text-xs font-medium ${
-            row.original.role === 'admin'
-              ? 'bg-indigo-100 text-indigo-700'
-              : 'bg-gray-100 text-gray-600'
-          }`}
-        >
+        <Badge variant={ADMIN_ROLES.includes(row.original.role) ? 'admin' : 'neutral'}>
           {row.original.role === 'admin' ? t.roleAdmin : t.rolePlayer}
-        </span>
+        </Badge>
       ),
     },
     {
@@ -104,35 +139,47 @@ export function UsersPage() {
       header: t.filterStatus,
       meta: { sortable: true },
       cell: ({ row }) => (
-        <span
-          className={`px-2 py-0.5 rounded text-xs font-medium ${
-            row.original.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
-          }`}
-        >
+        <Badge variant={row.original.is_active ? 'success' : 'danger'}>
           {row.original.is_active ? t.active : t.inactive}
-        </span>
+        </Badge>
       ),
+    },
+    {
+      // The list endpoint doesn't return per-user points yet (see the user
+      // detail overview) — the design's column renders the absent marker.
+      id: 'points',
+      header: t.waypoints, // "Puntos" — no dedicated column key yet
+      meta: { align: 'right' },
+      cell: () => <span className="text-faint">—</span>,
     },
     {
       accessorKey: 'registered_at',
       header: t.colRegistered,
       meta: { sortable: true },
-      cell: ({ row }) => formatDate(row.original.registered_at),
+      cell: ({ row }) => (
+        <span className="text-muted">{formatDate(row.original.registered_at)}</span>
+      ),
     },
     {
       accessorKey: 'last_activity_at',
       header: t.colLastActivity,
       meta: { sortable: true },
       cell: ({ row }) =>
-        row.original.last_activity_at ? formatDateTime(row.original.last_activity_at) : '—',
+        row.original.last_activity_at ? (
+          <span className="text-muted">{formatDateTime(row.original.last_activity_at)}</span>
+        ) : (
+          <span className="text-faint">—</span>
+        ),
     },
     {
       id: 'actions',
       header: '',
+      meta: { align: 'right' },
       cell: ({ row }) => (
         <button
+          type="button"
           onClick={() => navigate(`/admin/users/${row.original.id}`)}
-          className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+          className={btnRowAction}
         >
           {t.viewDetail}
         </button>
@@ -140,88 +187,88 @@ export function UsersPage() {
     },
   ]
 
-  const selectCls =
-    'rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
-
   return (
-    <div className="flex flex-col gap-4">
-      <h2 className="text-xl font-bold text-gray-900">{t.users}</h2>
+    <div className="max-w-[1120px] flex flex-col gap-5">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div className="relative flex items-center">
+          <Search
+            size={16}
+            strokeWidth={1.5}
+            aria-hidden
+            className="pointer-events-none absolute left-3 text-faint"
+          />
+          <input
+            type="search"
+            placeholder={t.searchUsersPlaceholder}
+            aria-label={t.searchUsersPlaceholder}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              resetPage()
+            }}
+            className={cn(inputCls, 'w-[300px] pl-9 text-sm')}
+          />
+        </div>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <input
-          type="search"
-          placeholder={t.searchUsersPlaceholder}
-          value={search}
+        <select
+          aria-label={t.filterRole}
+          value={role}
           onChange={(e) => {
-            setSearch(e.target.value)
+            setRole(e.target.value as Role | '')
             resetPage()
           }}
-          className={`${selectCls} w-full max-w-xs`}
+          className={inputCls}
+        >
+          <option value="">
+            {t.filterRole} · {t.filterAll}
+          </option>
+          <option value="player">{t.rolePlayer}</option>
+          <option value="admin">{t.roleAdmin}</option>
+        </select>
+
+        <select
+          aria-label={t.filterStatus}
+          value={status}
+          onChange={(e) => {
+            setStatus(e.target.value as StatusFilter)
+            resetPage()
+          }}
+          className={inputCls}
+        >
+          <option value="">
+            {t.filterStatus} · {t.filterAll}
+          </option>
+          <option value="active">{t.active}</option>
+          <option value="inactive">{t.inactive}</option>
+        </select>
+
+        <input
+          type="date"
+          aria-label={t.registeredFrom}
+          value={from}
+          onChange={(e) => {
+            setFrom(e.target.value)
+            resetPage()
+          }}
+          className={cn(inputCls, 'text-muted tnum')}
         />
 
-        <label className="flex flex-col gap-1 text-xs text-gray-500">
-          {t.filterRole}
-          <select
-            value={role}
-            onChange={(e) => {
-              setRole(e.target.value as Role | '')
-              resetPage()
-            }}
-            className={selectCls}
-          >
-            <option value="">{t.filterAll}</option>
-            <option value="player">{t.rolePlayer}</option>
-            <option value="admin">{t.roleAdmin}</option>
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs text-gray-500">
-          {t.filterStatus}
-          <select
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value as StatusFilter)
-              resetPage()
-            }}
-            className={selectCls}
-          >
-            <option value="">{t.filterAll}</option>
-            <option value="active">{t.active}</option>
-            <option value="inactive">{t.inactive}</option>
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs text-gray-500">
-          {t.registeredFrom}
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => {
-              setFrom(e.target.value)
-              resetPage()
-            }}
-            className={selectCls}
-          />
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs text-gray-500">
-          {t.registeredTo}
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => {
-              setTo(e.target.value)
-              resetPage()
-            }}
-            className={selectCls}
-          />
-        </label>
+        <input
+          type="date"
+          aria-label={t.registeredTo}
+          value={to}
+          onChange={(e) => {
+            setTo(e.target.value)
+            resetPage()
+          }}
+          className={cn(inputCls, 'text-muted tnum')}
+        />
 
         {hasFilters && (
           <button
             type="button"
             onClick={clearFilters}
-            className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 underline"
+            className="h-10 px-3 text-[13.5px] text-gold-deep underline underline-offset-3 cursor-pointer"
           >
             {t.clearFilters}
           </button>
@@ -236,8 +283,13 @@ export function UsersPage() {
         sortBy={sortCol}
         sortDir={sortDir}
         onSort={handleSort}
+        pagination={{
+          total: data?.total ?? 0,
+          limit: LIMIT,
+          offset,
+          onChange: setOffset,
+        }}
       />
-      <Pagination total={data?.total ?? 0} limit={LIMIT} offset={offset} onChange={setOffset} />
     </div>
   )
 }

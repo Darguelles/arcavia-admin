@@ -36,8 +36,8 @@ describe('ChallengesEditor (per waypoint)', () => {
         <ChallengesEditor waypointId="wp-1" />
       </Wrapper>
     )
-    await waitFor(() => screen.getByText('+ Agregar pregunta'))
-    await user.click(screen.getByText('+ Agregar pregunta'))
+    await waitFor(() => screen.getByText('Agregar pregunta'))
+    await user.click(screen.getByText('Agregar pregunta'))
     expect(screen.getByText('Pregunta 1')).toBeInTheDocument()
   })
 
@@ -48,8 +48,8 @@ describe('ChallengesEditor (per waypoint)', () => {
         <ChallengesEditor waypointId="wp-1" />
       </Wrapper>
     )
-    await waitFor(() => screen.getByText('+ Agregar pregunta'))
-    await user.click(screen.getByText('+ Agregar pregunta'))
+    await waitFor(() => screen.getByText('Agregar pregunta'))
+    await user.click(screen.getByText('Agregar pregunta'))
 
     // Any question can carry a fun fact — no riddle required.
     expect(screen.getByText('Dato curioso')).toBeInTheDocument()
@@ -66,8 +66,8 @@ describe('ChallengesEditor (per waypoint)', () => {
         <ChallengesEditor waypointId="wp-1" />
       </Wrapper>
     )
-    await waitFor(() => screen.getByText('+ Agregar pregunta'))
-    await user.click(screen.getByText('+ Agregar pregunta'))
+    await waitFor(() => screen.getByText('Agregar pregunta'))
+    await user.click(screen.getByText('Agregar pregunta'))
 
     const optionInputs = screen.getAllByPlaceholderText(/Texto de la opción/)
     expect(optionInputs.length).toBeGreaterThanOrEqual(2)
@@ -80,8 +80,8 @@ describe('ChallengesEditor (per waypoint)', () => {
         <ChallengesEditor waypointId="wp-1" />
       </Wrapper>
     )
-    await waitFor(() => screen.getByText('+ Agregar pregunta'))
-    await user.click(screen.getByText('+ Agregar pregunta'))
+    await waitFor(() => screen.getByText('Agregar pregunta'))
+    await user.click(screen.getByText('Agregar pregunta'))
 
     await user.type(
       screen.getByLabelText(/Enunciado de la pregunta/i),
@@ -105,9 +105,9 @@ describe('ChallengesEditor (per waypoint)', () => {
         <ChallengesEditor waypointId="wp-1" />
       </Wrapper>
     )
-    await waitFor(() => screen.getByText('+ Agregar pregunta'))
-    await user.click(screen.getByText('+ Agregar pregunta'))
-    await user.click(screen.getByText('+ Agregar pregunta'))
+    await waitFor(() => screen.getByText('Agregar pregunta'))
+    await user.click(screen.getByText('Agregar pregunta'))
+    await user.click(screen.getByText('Agregar pregunta'))
 
     // Two question cards → two card-level remove buttons
     const removeButtons = screen.getAllByRole('button', { name: /^Eliminar \d+$/ })

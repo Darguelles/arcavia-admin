@@ -106,6 +106,70 @@ export const t = {
   passwordMismatch: 'Las contraseñas no coinciden.',
   currentPassword: 'Contraseña actual',
 
+  // MFA
+  mfaTitle: 'Verificación en dos pasos',
+  mfaCodeLabel: 'Código de verificación',
+  mfaCodeHint: 'Introduce el código de 6 dígitos de tu app de autenticación.',
+  mfaVerifyButton: 'Verificar',
+  mfaUseRecoveryCode: 'Usar un código de recuperación',
+  mfaUseTotpCode: 'Usar el código de la app',
+  mfaRecoveryCodeLabel: 'Código de recuperación',
+  mfaInvalidCode: 'Código de verificación incorrecto.',
+  mfaTokenExpired: 'La sesión de verificación ha caducado. Inicia sesión de nuevo.',
+  mfaEnrollTitle: 'Configura la verificación en dos pasos',
+  mfaEnrollIntro:
+    'Escanea este código QR con tu app de autenticación (Google Authenticator, 1Password, Authy…) y confirma con el código de 6 dígitos.',
+  mfaEnrollManual: 'O introduce esta clave manualmente:',
+  mfaEnrollConfirmButton: 'Activar y continuar',
+  mfaEnrollRequired: 'Debes configurar la verificación en dos pasos para acceder al panel.',
+  mfaRecoveryCodesTitle: 'Códigos de recuperación',
+  mfaRecoveryCodesHint:
+    'Guarda estos códigos en un lugar seguro (gestor de contraseñas o impresos). Cada uno funciona una sola vez y son la única forma de entrar si pierdes tu app de autenticación. No se mostrarán de nuevo.',
+  mfaRecoveryCodesCopied: 'Códigos copiados.',
+  mfaRecoveryCodesContinue: 'Ya los guardé — continuar',
+  backToLogin: 'Volver a iniciar sesión',
+
+  // Team management
+  resetPassword: 'Restablecer contraseña',
+  team: 'Equipo',
+  teamTitle: 'Equipo del panel',
+  teamNew: 'Nuevo usuario',
+  teamCreateTitle: 'Crear usuario del panel',
+  teamRoleLabel: 'Rol',
+  teamRoleRoot: 'Root',
+  teamRoleAdmin: 'Administrador',
+  teamRoleStaff: 'Staff',
+  teamColMfa: 'MFA',
+  teamMfaEnrolled: 'Activada',
+  teamMfaPending: 'Pendiente',
+  teamResetMfa: 'Restablecer MFA',
+  teamResetMfaConfirm: (email: string) =>
+    `Se desactivará la verificación en dos pasos de ${email} y sus sesiones se cerrarán. Deberá configurarla de nuevo en su próximo inicio de sesión. ¿Continuar?`,
+  teamChangeRole: 'Cambiar rol',
+  teamChangeRoleConfirm: (email: string, role: string) =>
+    `Cambiar el rol de ${email} a ${role}. ¿Continuar?`,
+  teamCreated: 'Usuario creado.',
+  teamUpdated: 'Usuario actualizado.',
+  teamMfaResetDone: 'MFA restablecida.',
+  errCannotModifySelf: 'No puedes modificar tu propia cuenta.',
+  errCannotModifyRoot: 'La cuenta root no se puede modificar.',
+  errEmailTaken: 'Ya existe una cuenta con ese correo.',
+
+  // Audit log
+  audit: 'Auditoría',
+  auditTitle: 'Registro de auditoría',
+  auditColDate: 'Fecha',
+  auditColActor: 'Usuario',
+  auditColAction: 'Acción',
+  auditColTarget: 'Objeto',
+  auditColIp: 'IP',
+  auditFilterActor: 'Usuario',
+  auditFilterAction: 'Acción',
+  auditFilterFrom: 'Desde',
+  auditFilterTo: 'Hasta',
+  auditNoResults: 'Sin registros para los filtros seleccionados.',
+  auditDetails: 'Detalles',
+
   // Settings
   branding: 'Marca y recursos',
   uiTexts: 'Textos de la app',
@@ -160,6 +224,40 @@ export const t = {
   sponsorName: 'Nombre del patrocinador',
   sponsorLink: 'Enlace (opcional)',
   addSponsor: 'Agregar patrocinador',
+
+  // Login (split-screen redesign)
+  loginBrandTitle: 'Administrador',
+  loginBrandSubtitle:
+    'Panel de operación de Arcavia Quest.',
+  loginBrandFootnote: 'Acceso restringido al equipo. Toda acción queda registrada en auditoría.',
+  loginOverline: 'Iniciar sesión',
+  loginWelcome: 'Bienvenido de vuelta',
+  loginMfaNote: 'Tras la contraseña se pide el código de verificación en dos pasos.',
+
+  // Dashboard (redesign)
+  needsAttention: 'Requiere tu atención',
+  shortcuts: 'Atajos',
+  newMission: 'Nueva misión',
+  newCity: 'Nueva ciudad',
+  completions7d: 'Completados (7 d)',
+  allCitiesRange: 'Todas las ciudades · 30 días',
+
+  // List toolbars
+  createCity: 'Crear ciudad',
+  createMission: 'Crear misión',
+  createCampaign: 'Crear campaña',
+  searchCitiesPlaceholder: 'Buscar ciudades…',
+  searchMissionsPlaceholder: 'Buscar misiones…',
+  searchCampaignsPlaceholder: 'Buscar campañas…',
+  filterTabAll: 'Todas',
+  filterTabActive: 'Activas',
+  filterTabDraft: 'Borrador',
+  recordsCount: (n: number) => `${n.toLocaleString('es')} registros`,
+  filterTabPending: 'Pendientes',
+  filterTabResolved: 'Resueltas',
+  auditHideDetails: 'Ocultar',
+  riddleWarningTitle: 'Falta el acertijo',
+  readinessProgress: (met: number, total: number) => `${met} de ${total} requisitos cumplidos`,
 
   // Dashboard
   activeCities: 'Ciudades activas',

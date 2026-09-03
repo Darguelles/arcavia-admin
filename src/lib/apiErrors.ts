@@ -40,6 +40,21 @@ export function translateApiError(err: unknown): string {
       return t.invalidImageType
     case 'IMAGE_TOO_LARGE':
       return t.imageTooLarge
+    case 'INVALID_MFA_CODE':
+      return t.mfaInvalidCode
+    case 'MFA_TOKEN_EXPIRED':
+    case 'INVALID_MFA_TOKEN':
+      return t.mfaTokenExpired
+    case 'MFA_ENROLLMENT_REQUIRED':
+      return t.mfaEnrollRequired
+    case 'CANNOT_MODIFY_SELF':
+      return t.errCannotModifySelf
+    case 'CANNOT_MODIFY_ROOT':
+      return t.errCannotModifyRoot
+    case 'EMAIL_TAKEN':
+      return t.errEmailTaken
+    case 'INVALID_CREDENTIALS':
+      return t.loginError
     // The client itself raises these two with Spanish messages.
     case 'UNAUTHORIZED':
     case 'PASSWORD_RESET_REQUIRED':

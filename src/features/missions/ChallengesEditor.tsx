@@ -19,10 +19,12 @@ import {
   useUploadChallengeImage,
   useDeleteChallengeImage,
 } from '../../api/challenges'
+import { Plus, Trash2, X } from 'lucide-react'
 import { FormField } from '../../components/FormField'
 import { TranslationsEditor } from '../../components/TranslationsEditor'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
+import { btnAddDashed, btnIconSmDanger, btnSecondary, card, linkAction } from '../../components/ui'
 import { translateApiError } from '../../lib/apiErrors'
 import { t } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
@@ -116,20 +118,20 @@ function ChallengeFormBody({
   return (
     <>
       <div className="flex flex-col gap-1">
-        <label htmlFor={`ch-${idPrefix}-prompt`} className="text-sm font-medium text-gray-700">
+        <label htmlFor={`ch-${idPrefix}-prompt`} className="text-[13px] font-medium text-ink">
           {t.questionPrompt} *
         </label>
         <textarea
           id={`ch-${idPrefix}-prompt`}
           className={cn(
-            'rounded-lg border px-3 py-2 text-sm resize-y min-h-[60px]',
-            errors.prompt ? 'border-red-400 bg-red-50' : 'border-gray-300'
+            'rounded-control border bg-surface px-3 py-2 text-sm resize-y min-h-[60px]',
+            errors.prompt ? 'border-danger' : 'border-line-strong'
           )}
           aria-invalid={!!errors.prompt}
           {...register('prompt')}
         />
         {errors.prompt && (
-          <p className="text-xs text-red-600" role="alert">
+          <p className="text-[13px] text-danger" role="alert">
             {errors.prompt.message}
           </p>
         )}
@@ -138,7 +140,7 @@ function ChallengeFormBody({
       {/* Options */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-gray-700">{t.options}</label>
+          <label className="text-[13px] font-medium text-ink">{t.options}</label>
           <button
             type="button"
             onClick={() =>
@@ -149,9 +151,9 @@ function ChallengeFormBody({
                 translations: {},
               })
             }
-            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+            className={linkAction}
           >
-            + {t.addOption}
+            {t.addOption}
           </button>
         </div>
 
@@ -162,13 +164,13 @@ function ChallengeFormBody({
               name={`ch-${idPrefix}-correct`}
               checked={options[optIdx]?.is_correct ?? false}
               onChange={() => setCorrect(optIdx)}
-              className="h-4 w-4 text-indigo-600 border-gray-300"
+              className="h-4 w-4 accent-gold border-line-strong"
               aria-label={`Opción ${optIdx + 1} es correcta`}
               title={t.correctOption}
             />
             <input
               type="text"
-              className="flex-1 rounded border border-gray-300 px-3 py-1.5 text-sm"
+              className="flex-1 h-9 rounded-control border border-line-strong bg-surface px-3 text-sm"
               placeholder={`${t.optionText} ${optIdx + 1}`}
               aria-label={`Opción ${optIdx + 1}`}
               {...register(`options.${optIdx}.text`)}
@@ -177,22 +179,22 @@ function ChallengeFormBody({
               <button
                 type="button"
                 onClick={() => removeOption(optIdx)}
-                className="text-gray-400 hover:text-red-500 text-xs"
+                className="bg-transparent border-0 p-0 text-faint hover:text-danger cursor-pointer"
                 aria-label={`Eliminar opción ${optIdx + 1}`}
               >
-                ✕
+                <X size={15} strokeWidth={1.5} />
               </button>
             )}
           </div>
         ))}
 
         {typeof errors.options === 'object' && !Array.isArray(errors.options) && (
-          <p className="text-xs text-red-600" role="alert">
+          <p className="text-[13px] text-danger" role="alert">
             {(errors.options as { message?: string }).message}
           </p>
         )}
         {options.length >= 2 && !options.some((o) => o.is_correct) && (
-          <p className="text-xs text-red-600" role="alert">
+          <p className="text-[13px] text-danger" role="alert">
             {t.mustMarkCorrect}
           </p>
         )}
@@ -204,14 +206,14 @@ function ChallengeFormBody({
 
       {/* Riddle */}
       <div className="flex flex-col gap-2">
-        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+        <label className="flex items-center gap-2 text-sm font-medium text-ink">
           <input
             type="checkbox"
-            className="h-4 w-4 rounded border-gray-300"
+            className="h-4 w-4 rounded-chip border-line-strong accent-gold"
             {...register('is_riddle')}
           />
           {t.riddle}
-          <span className="text-xs font-normal text-gray-400">{t.riddleHint}</span>
+          <span className="text-[13px] font-normal text-muted">{t.riddleHint}</span>
         </label>
         {isRiddle && (
           <FormField as="input" label={t.keyword} hint={t.keywordHint} {...register('keyword')} />
@@ -241,14 +243,14 @@ export function ChallengesEditor({ waypointId }: { waypointId: string }) {
   const { data: challenges, isLoading } = useChallenges(waypointId)
   const [newCards, setNewCards] = useState<number[]>([])
 
-  if (isLoading) return <p className="text-gray-400">{t.loading}</p>
+  if (isLoading) return <p className="text-faint">{t.loading}</p>
 
   const existing = challenges ?? []
 
   return (
     <div className="flex flex-col gap-4">
       {existing.length === 0 && newCards.length === 0 && (
-        <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-4 py-3">
+        <p className="m-0 bg-warn-tint text-warn-text rounded-control px-4 py-3 text-[13px] leading-5">
           {t.noQuestionsYet}
         </p>
       )}
@@ -269,9 +271,10 @@ export function ChallengesEditor({ waypointId }: { waypointId: string }) {
       <button
         type="button"
         onClick={() => setNewCards((prev) => [...prev, Date.now()])}
-        className="self-start text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+        className={cn(btnAddDashed, 'self-start')}
       >
-        + {t.addQuestion}
+        <Plus size={15} strokeWidth={1.5} />
+        {t.addQuestion}
       </button>
     </div>
   )
@@ -340,20 +343,21 @@ function ChallengeCard({
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col gap-4"
+      className={cn(card, 'p-5 flex flex-col gap-4')}
       noValidate
     >
       <div className="flex items-center gap-3">
-        <h4 className="font-medium text-gray-800 flex-1">
+        <h4 className="m-0 text-[15px] font-semibold text-ink flex-1">
           {t.question} {index + 1}
         </h4>
         <button
           type="button"
           onClick={() => (isNew ? remove() : setConfirm(true))}
-          className="text-xs text-red-500 hover:text-red-700"
+          className={btnIconSmDanger}
           aria-label={`${t.remove} ${index + 1}`}
+          title={t.remove}
         >
-          {t.remove}
+          <Trash2 size={15} strokeWidth={1.5} />
         </button>
       </div>
 
@@ -376,11 +380,7 @@ function ChallengeCard({
       )}
 
       <div className="flex justify-end">
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
-        >
+        <button type="submit" disabled={isSubmitting} className={btnSecondary}>
           {isSubmitting ? t.loading : t.save}
         </button>
       </div>
@@ -419,7 +419,7 @@ export function DraftChallenges({
   return (
     <div className="flex flex-col gap-4">
       {cards.length === 0 && (
-        <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-4 py-3">
+        <p className="m-0 bg-warn-tint text-warn-text rounded-control px-4 py-3 text-[13px] leading-5">
           {t.noQuestionsYet}
         </p>
       )}
@@ -441,9 +441,10 @@ export function DraftChallenges({
         onClick={() =>
           setCards((cs) => [...cs, { key: nextKey.current++, data: blankChallenge(cs.length) }])
         }
-        className="self-start text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+        className={cn(btnAddDashed, 'self-start')}
       >
-        + {t.addQuestion}
+        <Plus size={15} strokeWidth={1.5} />
+        {t.addQuestion}
       </button>
     </div>
   )
@@ -481,18 +482,19 @@ function DraftChallengeCard({
   }, [watch])
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col gap-4">
+    <div className={cn(card, 'p-5 flex flex-col gap-4')}>
       <div className="flex items-center gap-3">
-        <h4 className="font-medium text-gray-800 flex-1">
+        <h4 className="m-0 text-[15px] font-semibold text-ink flex-1">
           {t.question} {index + 1}
         </h4>
         <button
           type="button"
           onClick={onRemove}
-          className="text-xs text-red-500 hover:text-red-700"
+          className={btnIconSmDanger}
           aria-label={`${t.remove} ${index + 1}`}
+          title={t.remove}
         >
-          {t.remove}
+          <Trash2 size={15} strokeWidth={1.5} />
         </button>
       </div>
 
@@ -560,18 +562,18 @@ function ChallengeImageSection({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+    <div className="flex flex-col gap-3 rounded-card border border-line bg-paper p-4">
       <div>
-        <h5 className="text-sm font-medium text-gray-800">{t.challengeImage}</h5>
-        <p className="mt-0.5 text-xs text-gray-400">{t.challengeImageHint}</p>
+        <h5 className="m-0 text-[13px] font-semibold text-ink">{t.challengeImage}</h5>
+        <p className="m-0 mt-0.5 text-[13px] text-muted">{t.challengeImageHint}</p>
       </div>
 
       <div className="flex items-center gap-5">
-        <div className="h-24 w-40 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <div className="h-24 w-40 shrink-0 overflow-hidden rounded-card border border-line bg-surface">
           {imageUrl ? (
             <img src={imageUrl} alt="" className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center px-2 text-center text-xs text-gray-400">
+            <div className="flex h-full w-full items-center justify-center px-2 text-center text-xs text-faint">
               {t.noImageYet}
             </div>
           )}
@@ -582,7 +584,7 @@ function ChallengeImageSection({
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={busy}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+            className={btnSecondary}
           >
             {busy ? t.loading : imageUrl ? t.changeImage : t.uploadImage}
           </button>
@@ -591,7 +593,7 @@ function ChallengeImageSection({
               type="button"
               onClick={onRemove}
               disabled={busy}
-              className="px-2 py-1 text-sm font-medium text-red-600 hover:text-red-800 disabled:opacity-60"
+              className="bg-transparent border-0 p-0 text-[13px] font-medium text-danger hover:text-danger-deep cursor-pointer disabled:opacity-40"
             >
               {t.removeImage}
             </button>

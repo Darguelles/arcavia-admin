@@ -13,9 +13,12 @@ without re-discovering it. See also `docs/admin-architecture.md`, `docs/api-cont
   admin at `http://localhost:3001/admin/`, API + docs at `http://localhost:8000` (`/docs`),
   player PWA at `http://localhost:3000`. Vite dev server runs with HMR + volume mount, so
   source edits are live; you rarely need to restart.
-- **Local default admin** (pre-filled on the login form): `admin@arcavia.com` / `12345678`.
-  Seeded by `../arcavia-api/scripts/seed_admin.py` (idempotent; wired into the compose
-  `seed` service). Overridable via `VITE_DEFAULT_ADMIN_*` (form) and `ADMIN_*` (seed).
+- **Local root user**: `admin@arcavia.com` / `12345678` (role `root`), seeded by
+  `../arcavia-api/scripts/seed_admin.py` (idempotent; wired into the compose `seed`
+  service; overridable via `ADMIN_*`; password only re-reset when
+  `ADMIN_SEED_RESET_PASSWORD=true`, which also clears MFA — the break-glass path).
+  **MFA (TOTP) is mandatory for all panel roles**: first login forces enrollment
+  (QR + recovery codes), every login needs a code. There is no login-form pre-fill.
 - **Verify a change** with: `npm run typecheck`, `npx vitest run`, `npm run format:check`,
   `npm run lint`.
 - ⚠️ **`npm run ci` currently fails on a PRE-EXISTING coverage gate** (`test:coverage`
@@ -143,8 +146,12 @@ cannot be active with 0 challenges; a mission cannot activate unless its structu
 - **Shared components** (`src/components/`): `FormField`, `DataTable`, `MapPicker`,
   `MapAreaPicker`, `Layout` (nav + city filter), `Toast`, `ConfirmDialog`, `TranslationsEditor`.
 - **Auth**: `src/auth/` (`store.ts`, `useAuth.ts`, `RequireAdmin.tsx`). Login returns
-  `access_token` + `role` + `user_id` + `force_password_reset`; the panel is admin-only
-  (`role === 'admin'`). Access token is a JWT; refresh via httpOnly cookie.
+  `mfa` + `mfa_token` for panel roles (`root`/`admin`/`staff` — see `ADMIN_ROLES` in
+  `src/api/types.ts`); tokens are issued by `/auth/mfa/verify` or `/auth/mfa/enroll/confirm`
+  (LoginPage is a 3-step state machine). Access token is a JWT; refresh via httpOnly
+  cookie. Root-only: `/admin/team` (team management, `src/features/team/`); root+admin:
+  `/admin/audit` (audit viewer, `src/features/audit/`); sidebar entries are role-gated
+  via `NAV_ITEMS[].roles` in `src/components/Layout.tsx`.
 
 ## Known gaps (backend not yet implemented)
 

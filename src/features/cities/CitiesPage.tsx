@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
+import { Pencil, Plus, Power, Search } from 'lucide-react'
 import { useCities, useDeactivateCity } from '../../api/cities'
 import type { City } from '../../api/types'
-import { DataTable, Pagination } from '../../components/DataTable'
+import { DataTable } from '../../components/DataTable'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
+import { Badge, btnIconSm, btnIconSmDanger, btnPrimary } from '../../components/ui'
 import { t } from '../../lib/i18n'
 import { formatDate } from '../../lib/utils'
 
@@ -21,48 +23,65 @@ export function CitiesPage() {
   const { data, isLoading } = useCities({ search, limit: LIMIT, offset })
   const deactivate = useDeactivateCity(confirmCity?.id ?? '')
 
+  const total = data?.total ?? 0
+  const activeCount = (data?.items ?? []).filter((c) => c.is_active).length
+
   const columns: ColumnDef<City, unknown>[] = [
-    { accessorKey: 'name', header: t.name },
-    { accessorKey: 'country', header: t.country },
+    {
+      accessorKey: 'name',
+      header: t.name,
+      cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
+    },
+    {
+      accessorKey: 'country',
+      header: t.country,
+      cell: ({ row }) => <span className="text-muted">{row.original.country}</span>,
+    },
     {
       accessorKey: 'is_active',
-      header: t.active,
+      header: t.filterStatus,
       cell: ({ row }) => (
-        <span
-          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-            row.original.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-          }`}
-        >
+        <Badge variant={row.original.is_active ? 'success' : 'neutral'}>
           {row.original.is_active ? t.active : t.inactive}
-        </span>
+        </Badge>
       ),
     },
     {
       accessorKey: 'launch_date',
       header: t.launchDate,
-      cell: ({ row }) => (row.original.launch_date ? formatDate(row.original.launch_date) : '—'),
+      cell: ({ row }) =>
+        row.original.launch_date ? (
+          <span className="text-muted tnum">{formatDate(row.original.launch_date)}</span>
+        ) : (
+          <span className="text-faint">—</span>
+        ),
     },
     {
       accessorKey: 'campaign_count',
       header: 'Campañas',
+      meta: { align: 'right' },
     },
     {
       id: 'actions',
       header: '',
       cell: ({ row }) => (
-        <div className="flex gap-2 justify-end">
+        <div className="flex gap-1.5 justify-end">
           <button
             onClick={() => navigate(`/admin/cities/${row.original.id}/edit`)}
-            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+            className={btnIconSm}
+            aria-label={t.edit}
+            title={t.edit}
           >
-            {t.edit}
+            <Pencil size={15} strokeWidth={1.5} />
           </button>
           {row.original.is_active && (
             <button
               onClick={() => setConfirmCity(row.original)}
-              className="text-xs text-red-600 hover:text-red-800 font-medium"
+              className={btnIconSmDanger}
+              aria-label={t.deactivate}
+              title={t.deactivate}
             >
-              {t.deactivate}
+              <Power size={15} strokeWidth={1.5} />
             </button>
           )}
         </div>
@@ -83,29 +102,36 @@ export function CitiesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-900">{t.cities}</h2>
-        <button
-          onClick={() => navigate('/admin/cities/new')}
-          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg"
-        >
-          + {t.create}
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-3">
+        <div className="relative flex items-center">
+          <Search
+            size={16}
+            strokeWidth={1.5}
+            className="absolute left-3 text-faint pointer-events-none"
+          />
+          <input
+            type="search"
+            placeholder={t.searchCitiesPlaceholder}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setOffset(0)
+            }}
+            className="h-10 w-[300px] rounded-control border border-line-strong bg-surface pl-9 pr-3 text-sm"
+            aria-label={t.search}
+          />
+        </div>
+        {!isLoading && (
+          <span className="text-[13px] text-muted tnum">
+            {total} {total === 1 ? 'ciudad' : 'ciudades'} · {activeCount}{' '}
+            {activeCount === 1 ? 'activa' : 'activas'}
+          </span>
+        )}
+        <button onClick={() => navigate('/admin/cities/new')} className={`${btnPrimary} ml-auto`}>
+          <Plus size={18} strokeWidth={1.5} />
+          {t.createCity}
         </button>
-      </div>
-
-      <div>
-        <input
-          type="search"
-          placeholder={`${t.search} ciudades…`}
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value)
-            setOffset(0)
-          }}
-          className="w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          aria-label={t.search}
-        />
       </div>
 
       <DataTable
@@ -113,8 +139,8 @@ export function CitiesPage() {
         columns={columns}
         loading={isLoading}
         emptyMessage={t.noCities}
+        pagination={{ total, limit: LIMIT, offset, onChange: setOffset }}
       />
-      <Pagination total={data?.total ?? 0} limit={LIMIT} offset={offset} onChange={setOffset} />
 
       <ConfirmDialog
         open={!!confirmCity}

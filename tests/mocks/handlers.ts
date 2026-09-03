@@ -3,16 +3,33 @@ import { http, HttpResponse } from 'msw'
 const BASE = 'http://localhost:8000'
 
 export const handlers = [
-  // Auth
+  // Auth — mirrors the real backend: admin-panel roles get an MFA challenge
+  // instead of tokens at the password step (login serializes exclude_none, so
+  // the MFA branch carries no access_token/role keys).
   http.post(`${BASE}/api/v1/auth/login`, async ({ request }) => {
     const body = (await request.json()) as Record<string, string>
     if (body.email === 'admin@test.com' && body.password === 'adminpass') {
       return HttpResponse.json({
-        access_token: 'test-admin-token',
         token_type: 'bearer',
-        role: 'admin',
-        user_id: 'admin-user-1',
         force_password_reset: false,
+        mfa: 'totp',
+        mfa_token: 'test-mfa-token',
+      })
+    }
+    if (body.email === 'enroll@test.com' && body.password === 'enrollpass') {
+      return HttpResponse.json({
+        token_type: 'bearer',
+        force_password_reset: false,
+        mfa: 'enroll',
+        mfa_token: 'test-enroll-token',
+      })
+    }
+    if (body.email === 'reset@test.com' && body.password === 'resetpass') {
+      return HttpResponse.json({
+        token_type: 'bearer',
+        force_password_reset: false,
+        mfa: 'totp',
+        mfa_token: 'reset-mfa-token',
       })
     }
     if (body.email === 'player@test.com' && body.password === 'playerpass') {
@@ -24,7 +41,22 @@ export const handlers = [
         force_password_reset: false,
       })
     }
-    if (body.email === 'reset@test.com' && body.password === 'resetpass') {
+    return HttpResponse.json(
+      { error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password.' } },
+      { status: 401 }
+    )
+  }),
+
+  http.post(`${BASE}/api/v1/auth/mfa/verify`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, string>
+    const validCode = body.code === '123456' || body.recovery_code === 'AAAA-BBBB'
+    if (!validCode) {
+      return HttpResponse.json(
+        { error: { code: 'INVALID_MFA_CODE', message: 'Invalid verification code.' } },
+        { status: 401 }
+      )
+    }
+    if (body.mfa_token === 'reset-mfa-token') {
       return HttpResponse.json({
         access_token: 'test-reset-token',
         token_type: 'bearer',
@@ -33,10 +65,50 @@ export const handlers = [
         force_password_reset: true,
       })
     }
-    return HttpResponse.json(
-      { code: 'INVALID_CREDENTIALS', message: 'Credenciales inválidas' },
-      { status: 401 }
-    )
+    return HttpResponse.json({
+      access_token: 'test-admin-token',
+      token_type: 'bearer',
+      role: 'admin',
+      user_id: 'admin-user-1',
+      force_password_reset: false,
+    })
+  }),
+
+  http.post(`${BASE}/api/v1/auth/mfa/enroll/start`, () => {
+    return HttpResponse.json({
+      secret: 'JBSWY3DPEHPK3PXP',
+      otpauth_uri:
+        'otpauth://totp/Arcavia%20Admin:enroll%40test.com?secret=JBSWY3DPEHPK3PXP&issuer=Arcavia%20Admin',
+    })
+  }),
+
+  http.post(`${BASE}/api/v1/auth/mfa/enroll/confirm`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, string>
+    if (body.code !== '123456') {
+      return HttpResponse.json(
+        { error: { code: 'INVALID_MFA_CODE', message: 'Invalid verification code.' } },
+        { status: 401 }
+      )
+    }
+    return HttpResponse.json({
+      access_token: 'test-enrolled-token',
+      token_type: 'bearer',
+      role: 'staff',
+      user_id: 'staff-user-1',
+      force_password_reset: false,
+      recovery_codes: [
+        'AAAA-BBBB',
+        'CCCC-DDDD',
+        'EEEE-FFFF',
+        'GGGG-HHHH',
+        'JJJJ-KKKK',
+        'LLLL-MMMM',
+        'NNNN-PPPP',
+        'QQQQ-RRRR',
+        'SSSS-TTTT',
+        'UUUU-VVVV',
+      ],
+    })
   }),
 
   http.post(`${BASE}/api/v1/auth/logout`, () => {
@@ -47,8 +119,115 @@ export const handlers = [
     return HttpResponse.json({ access_token: 'refreshed-token' })
   }),
 
-  http.post(`${BASE}/api/v1/auth/change-password`, () => {
+  http.post(`${BASE}/api/v1/account/password`, () => {
     return new HttpResponse(null, { status: 204 })
+  }),
+
+  // Team management (root-only)
+  http.get(`${BASE}/api/v1/admin/team`, () => {
+    return HttpResponse.json({
+      items: [
+        {
+          id: 'root-user-1',
+          email: 'root@example.com',
+          display_name: 'Root',
+          role: 'root',
+          is_active: true,
+          mfa_enrolled: true,
+          force_password_reset: false,
+          created_at: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'staff-user-1',
+          email: 'staff@example.com',
+          display_name: 'Staff Uno',
+          role: 'staff',
+          is_active: true,
+          mfa_enrolled: false,
+          force_password_reset: true,
+          created_at: '2026-02-01T00:00:00Z',
+        },
+      ],
+    })
+  }),
+
+  http.post(`${BASE}/api/v1/admin/team`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, string>
+    return HttpResponse.json(
+      {
+        user: {
+          id: 'new-team-1',
+          email: body.email,
+          display_name: body.display_name,
+          role: body.role,
+          is_active: true,
+          mfa_enrolled: false,
+          force_password_reset: true,
+          created_at: '2026-03-01T00:00:00Z',
+        },
+        temp_password: 'TempPass-1234567',
+      },
+      { status: 201 }
+    )
+  }),
+
+  http.patch(`${BASE}/api/v1/admin/team/:id`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({
+      id: params['id'],
+      email: 'staff@example.com',
+      display_name: 'Staff Uno',
+      role: body.role ?? 'staff',
+      is_active: body.is_active ?? true,
+      mfa_enrolled: false,
+      force_password_reset: true,
+      created_at: '2026-02-01T00:00:00Z',
+    })
+  }),
+
+  http.post(`${BASE}/api/v1/admin/team/:id/reset-password`, () => {
+    return HttpResponse.json({ temp_password: 'TempPass-7654321' })
+  }),
+
+  http.post(`${BASE}/api/v1/admin/team/:id/reset-mfa`, () => {
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // Audit log
+  http.get(`${BASE}/api/v1/admin/audit-log`, ({ request }) => {
+    const url = new URL(request.url)
+    const action = url.searchParams.get('action')
+    const items = [
+      {
+        id: 'audit-1',
+        actor_user_id: 'root-user-1',
+        actor_email: 'root@example.com',
+        actor_role: 'root',
+        action: 'TEAM_USER_CREATED',
+        target_type: 'user',
+        target_id: 'staff-user-1',
+        metadata: { role: 'staff' },
+        ip: '203.0.113.7',
+        user_agent: 'TestAgent/1.0',
+        request_id: 'req-1',
+        created_at: '2026-08-30T10:00:00Z',
+      },
+      {
+        id: 'audit-2',
+        actor_user_id: 'admin-user-1',
+        actor_email: 'admin@test.com',
+        actor_role: 'admin',
+        action: 'LOGIN_SUCCESS',
+        target_type: 'user',
+        target_id: 'admin-user-1',
+        metadata: null,
+        ip: '203.0.113.9',
+        user_agent: 'TestAgent/1.0',
+        request_id: 'req-2',
+        created_at: '2026-08-30T09:00:00Z',
+      },
+    ].filter((i) => !action || i.action === action)
+    return HttpResponse.json({ items, total: items.length })
   }),
 
   // Dashboard

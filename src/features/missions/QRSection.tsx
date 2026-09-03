@@ -1,10 +1,13 @@
 import { useRef, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
+import { Printer, TriangleAlert } from 'lucide-react'
 import { useWaypointQR, useGenerateQR, useToggleQRActive } from '../../api/qr'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
+import { Badge, btnApprove, btnDanger, btnSecondary } from '../../components/ui'
 import { t } from '../../lib/i18n'
 import { translateApiError } from '../../lib/apiErrors'
+import { cn } from '../../lib/utils'
 
 interface QRSectionProps {
   waypointId: string
@@ -67,50 +70,49 @@ export function QRSection({ waypointId, waypointName, cityName }: QRSectionProps
     w.close()
   }
 
-  if (isLoading) return <p className="text-gray-400">{t.loading}</p>
+  if (isLoading) return <p className="text-faint">{t.loading}</p>
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
-        ⚠ {t.qrGuardrail}
+      <div className="flex items-start gap-2.5 bg-warn-tint text-warn-text rounded-control px-4 py-3 text-[13px] leading-5">
+        <TriangleAlert
+          size={16}
+          strokeWidth={1.5}
+          className="shrink-0 mt-0.5 text-warn-deep"
+          aria-hidden
+        />
+        <span>{t.qrGuardrail}</span>
       </div>
 
       {qr ? (
         <div className="flex flex-col items-center gap-4">
           <div
             ref={printRef}
-            className={`p-6 bg-white border-2 border-gray-200 rounded-xl inline-block ${
-              qr.is_active ? '' : 'opacity-50'
-            }`}
+            className={cn(
+              'p-6 bg-surface border border-line rounded-card inline-block',
+              !qr.is_active && 'opacity-50'
+            )}
           >
             <QRCodeSVG value={qr.token} size={200} />
           </div>
 
-          <p className="text-xs text-gray-500">
-            Token: <code className="bg-gray-100 px-1 rounded">{qr.token.slice(0, 8)}…</code>{' '}
-            <span
-              className={`ml-2 px-2 py-0.5 rounded text-xs font-medium ${
-                qr.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-              }`}
-            >
+          <p className="m-0 flex items-center gap-2 text-[13px] text-muted">
+            Token:{' '}
+            <code className="font-mono text-xs bg-paper border border-line rounded-chip px-1.5 py-0.5">
+              {qr.token.slice(0, 8)}…
+            </code>
+            <Badge variant={qr.is_active ? 'success' : 'neutral'}>
               {qr.is_active ? t.active : t.inactive}
-            </span>
+            </Badge>
           </p>
 
           <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg"
-            >
-              🖨 {t.download}
+            <button type="button" onClick={handlePrint} className={btnSecondary}>
+              <Printer size={16} strokeWidth={1.5} />
+              {t.download}
             </button>
             {qr.is_active ? (
-              <button
-                type="button"
-                onClick={() => setConfirmRetire(true)}
-                className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg"
-              >
+              <button type="button" onClick={() => setConfirmRetire(true)} className={btnDanger}>
                 {t.deactivate}
               </button>
             ) : (
@@ -118,7 +120,7 @@ export function QRSection({ waypointId, waypointName, cityName }: QRSectionProps
                 type="button"
                 onClick={() => setActive(true)}
                 disabled={toggle.isPending}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+                className={btnApprove}
               >
                 {t.activate}
               </button>
@@ -126,13 +128,13 @@ export function QRSection({ waypointId, waypointName, cityName }: QRSectionProps
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-4 py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-          <p className="text-sm text-gray-500">Este punto no tiene un código QR.</p>
+        <div className="flex flex-col items-center gap-4 py-8 rounded-card border border-dashed border-line-strong bg-paper">
+          <p className="m-0 text-[13px] text-muted">Este punto no tiene un código QR.</p>
           <button
             type="button"
             onClick={handleGenerate}
             disabled={generate.isPending}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60"
+            className={btnSecondary}
           >
             {generate.isPending ? t.loading : `${t.generate} código QR`}
           </button>

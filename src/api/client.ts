@@ -101,6 +101,12 @@ async function request<T>(path: string, init: RequestInit = {}, retry = true): P
       useAuthStore.getState().setForceReset(true)
       throw new ApiClientError(403, err.code, err.message)
     }
+    // MFA enrollment happens during login — a session that hits this must
+    // restart the login flow (RequireAdmin redirects once the session clears).
+    if (err.code === 'MFA_ENROLLMENT_REQUIRED') {
+      useAuthStore.getState().clearSession()
+      throw new ApiClientError(403, err.code, err.message)
+    }
     throw new ApiClientError(403, err.code, err.message)
   }
 
