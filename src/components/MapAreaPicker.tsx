@@ -67,6 +67,7 @@ export function MapAreaPicker({ value, onChange, height = '400px' }: MapAreaPick
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const rectRef = useRef<L.Rectangle | null>(null)
+  const previewRef = useRef<L.Rectangle | null>(null)
   const centerRef = useRef<L.Marker | null>(null)
   const boxRef = useRef<Partial<BoundingBox>>(value)
   // Key of the last box we emitted or synced — lets the sync effect ignore its
@@ -93,7 +94,9 @@ export function MapAreaPicker({ value, onChange, height = '400px' }: MapAreaPick
         [south, west],
         [north, east],
       ],
-      { color: '#6366f1', weight: 2, fillOpacity: 0.1 }
+      // Gold accent (design token --color-gold); Leaflet paints on canvas, so
+      // the hex is unavoidable here.
+      { color: '#b19071', weight: 2, fillOpacity: 0.1 }
     ).addTo(map)
   }, [])
 
@@ -146,10 +149,19 @@ export function MapAreaPicker({ value, onChange, height = '400px' }: MapAreaPick
     }
     emittedRef.current = boxKey(value)
 
-    // Click twice to drop the two opposite corners of the bounding box.
+    // Rubber-band drawing: the first click anchors a corner, the rectangle
+    // follows the cursor live, and the second click drops the opposite corner.
+    const clearPreview = () => {
+      previewRef.current?.remove()
+      previewRef.current = null
+      firstCornerRef.current = null
+      map.getContainer().style.cursor = ''
+    }
+
     map.on('click', (e: L.LeafletMouseEvent) => {
       if (!firstCornerRef.current) {
         firstCornerRef.current = e.latlng
+        map.getContainer().style.cursor = 'crosshair'
         return
       }
       const north = Math.max(firstCornerRef.current.lat, e.latlng.lat)
@@ -163,10 +175,40 @@ export function MapAreaPicker({ value, onChange, height = '400px' }: MapAreaPick
         bbox_east: east,
         bbox_west: west,
       }
+      // Sin centro fijado aún, úsese el del rectángulo — dos clicks bastan;
+      // el click derecho o arrastrar el pin lo ajustan después.
+      if (boxRef.current.center_lat === undefined || boxRef.current.center_lng === undefined) {
+        boxRef.current.center_lat = (north + south) / 2
+        boxRef.current.center_lng = (east + west) / 2
+      }
+      clearPreview()
       drawRect(north, south, east, west)
-      firstCornerRef.current = null
+      placeCenter(boxRef.current.center_lat, boxRef.current.center_lng)
       emit()
     })
+
+    map.on('mousemove', (e: L.LeafletMouseEvent) => {
+      const anchor = firstCornerRef.current
+      if (!anchor) return
+      const bounds = L.latLngBounds(anchor, e.latlng)
+      if (previewRef.current) {
+        previewRef.current.setBounds(bounds)
+      } else {
+        previewRef.current = L.rectangle(bounds, {
+          color: '#b19071',
+          weight: 2,
+          dashArray: '6 4',
+          fillOpacity: 0.06,
+          interactive: false,
+        }).addTo(map)
+      }
+    })
+
+    // Escape cancels a rectangle in progress.
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape' && firstCornerRef.current) clearPreview()
+    }
+    window.addEventListener('keydown', onKeyDown)
 
     // Right-click fixes the city center.
     map.on('contextmenu', (e: L.LeafletMouseEvent) => {
@@ -177,9 +219,11 @@ export function MapAreaPicker({ value, onChange, height = '400px' }: MapAreaPick
 
     return () => {
       clearTimeout(invalidateTimer)
+      window.removeEventListener('keydown', onKeyDown)
       map.remove()
       mapRef.current = null
       rectRef.current = null
+      previewRef.current = null
       centerRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -232,8 +276,9 @@ export function MapAreaPicker({ value, onChange, height = '400px' }: MapAreaPick
         aria-label="Mapa para definir el área de la ciudad"
       />
       <p className="text-[13px] leading-[19px] text-muted">
-        <strong>Click izquierdo dos veces</strong> para dibujar el área.{' '}
-        <strong>Click derecho</strong> para fijar el centro. {t.cityMapAreaHint}
+        <strong>Un click</strong> ancla la esquina y el cuadro sigue al cursor;{' '}
+        <strong>un segundo click</strong> lo suelta (Esc cancela). <strong>Click derecho</strong>{' '}
+        para fijar el centro. {t.cityMapAreaHint}
       </p>
     </div>
   )

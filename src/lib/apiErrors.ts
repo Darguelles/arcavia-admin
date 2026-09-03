@@ -53,6 +53,8 @@ export function translateApiError(err: unknown): string {
       return t.errCannotModifyRoot
     case 'EMAIL_TAKEN':
       return t.errEmailTaken
+    case 'SLUG_TAKEN':
+      return t.errSlugTaken
     case 'INVALID_CREDENTIALS':
       return t.loginError
     // The client itself raises these two with Spanish messages.

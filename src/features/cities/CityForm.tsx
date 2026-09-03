@@ -13,6 +13,7 @@ import { btnGhost, btnIcon, btnPrimary, card } from '../../components/ui'
 import { slugify } from '../../lib/utils'
 import { t } from '../../lib/i18n'
 import { ApiClientError } from '../../api/client'
+import { translateApiError } from '../../lib/apiErrors'
 
 interface Place {
   name: string
@@ -237,12 +238,17 @@ export function CityForm() {
         navigate(`/admin/cities/${newCity.id}/edit`)
       }
     } catch (err) {
-      if (err instanceof ApiClientError && err.details) {
-        Object.entries(err.details).forEach(([field, msg]) => {
-          setError(field as keyof CityFormData, { message: String(msg) })
-        })
+      if (err instanceof ApiClientError) {
+        if (err.code === 'SLUG_TAKEN') {
+          setError('slug', { message: t.errSlugTakenField })
+        }
+        if (err.details) {
+          Object.entries(err.details).forEach(([field, msg]) => {
+            setError(field as keyof CityFormData, { message: String(msg) })
+          })
+        }
       }
-      toast.error(t.error)
+      toast.error(translateApiError(err))
     }
   }
 

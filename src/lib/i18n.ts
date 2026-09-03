@@ -155,6 +155,11 @@ export const t = {
   errCannotModifyRoot: 'La cuenta root no se puede modificar.',
   errEmailTaken: 'Ya existe una cuenta con ese correo.',
 
+  // Duplicate city slug (409 SLUG_TAKEN)
+  errSlugTakenField: 'Ya existe una ciudad con este código corto.',
+  errSlugTaken:
+    'Ya existe una ciudad con ese código corto. Para crear otra zona de la misma ciudad (p. ej. «Lima Antigua»), cambia el nombre o el código corto — cada zona funciona como una ciudad aparte.',
+
   // Audit log
   audit: 'Auditoría',
   auditTitle: 'Registro de auditoría',
@@ -227,8 +232,7 @@ export const t = {
 
   // Login (split-screen redesign)
   loginBrandTitle: 'Administrador',
-  loginBrandSubtitle:
-    'Panel de operación de Arcavia Quest.',
+  loginBrandSubtitle: 'Panel de operación de Arcavia Quest.',
   loginBrandFootnote: 'Acceso restringido al equipo. Toda acción queda registrada en auditoría.',
   loginOverline: 'Iniciar sesión',
   loginWelcome: 'Bienvenido de vuelta',
