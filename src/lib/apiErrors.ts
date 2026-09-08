@@ -34,6 +34,10 @@ export function translateApiError(err: unknown): string {
       return t.errPhaseInUse
     case 'INVALID_OPTIONS':
       return t.errInvalidOptions
+    case 'CHALLENGE_OPTION_IN_USE':
+      return t.errChallengeOptionInUse
+    case 'CHALLENGE_IN_USE':
+      return t.errChallengeInUse
     case 'CATEGORY_MISSION_MISMATCH':
       return t.errCategoryMissionMismatch
     case 'INVALID_IMAGE_TYPE':

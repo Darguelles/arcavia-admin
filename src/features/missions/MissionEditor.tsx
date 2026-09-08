@@ -33,6 +33,7 @@ import {
   btnSecondary,
   card,
   overline,
+  ImageSpec,
 } from '../../components/ui'
 import { CategoriesEditor } from './CategoriesEditor'
 import { PhasesEditor } from './PhasesEditor'
@@ -508,6 +509,7 @@ function MissionImageSection({
       <div>
         <h3 className="m-0 text-[17px] font-semibold text-ink">{t.missionImage}</h3>
         <p className="m-0 mt-1 text-[13px] text-muted">{t.missionImageHint}</p>
+        <ImageSpec spec={t.missionImageSpec} className="mt-1.5" />
       </div>
 
       <div className="flex items-center gap-5">

@@ -360,16 +360,12 @@ export interface Setting {
 }
 
 /**
- * Value of the `home_content` settings key — operator-managed copy and sponsor
- * banners for the player app's Home (landing) page. Every field is optional;
- * the player app hides unset blocks. Hand-mirrored in
+ * Value of the `home_content` settings key — operator-managed copy and photos of
+ * the player app's Home (landing) page, Figma HOME frame 316:40. Every field is
+ * optional; the player falls back to its defaults (src/lib/homeDefaults.ts
+ * mirror) and to its committed design photos. Hand-mirrored in
  * arcavia-frontend/src/api/settings.ts — keep in sync.
  */
-export interface HomeSponsor {
-  name: string
-  image_url: string
-  link_url?: string
-}
 
 /** One slide of the landmark carousel (the player shows max 8). */
 export interface LandmarkSlide {
@@ -378,41 +374,45 @@ export interface LandmarkSlide {
   caption?: string
 }
 
-/** One "Cómo Funciona" step's copy (icons stay fixed in the player app). */
+/** One "¡Tu aventura comienza aquí!" step's copy (icons stay fixed in the player app). */
 export interface HomeStep {
+  title: string
+  body: string
+}
+
+/** One "¿Hasta dónde llegarás?" tier's copy (five stepped cards). */
+export interface HomeTier {
   title: string
   body: string
 }
 
 export interface HomeContent {
   hero_intro?: string
-  headline_body?: string
-  section_title?: string
-  play_intro?: string
-  play_outro?: string
-  // Blocks below default to src/lib/homeDefaults.ts when unset — the editor
-  // pre-fills them so the live text is edited in place.
+  hero_tagline?: string
   headline?: string
-  need_title?: string
-  need_body?: string
-  solution_title?: string
-  solution_body?: string
+  headline_body?: string
+  city_title?: string
+  city_body?: string
   how_title?: string
   how_steps?: HomeStep[]
-  vision_title?: string
-  vision_intro?: string
-  vision_points?: string[]
-  band_text?: string
-  play_title?: string
+  legend_title?: string
+  legend_subtitle?: string
+  legend_body?: string
+  feature_title?: string
+  feature_body?: string
+  tiers_title?: string
+  tiers_intro?: string
+  tiers?: HomeTier[]
   closing_title?: string
   closing_body?: string
-  /** Hero key visual shown under the logo. */
+  /** Hero key visual (the angel) shown under the wordmark. */
   hero_image_url?: string
+  /** Photo under "La leyenda del Ángel". */
+  legend_image_url?: string
+  /** Photo inside the gold feature card. */
+  feature_image_url?: string
   /** Landmark carousel slides (max 8 shown). */
   landmarks?: LandmarkSlide[]
-  /** Brand mark shown centered on both white cards. */
-  brand_mark_url?: string
-  sponsors?: HomeSponsor[]
   /** @deprecated pre-carousel single-photo fields — seeded into `landmarks` on edit. */
   landmark_image_url?: string
   landmark_title?: string

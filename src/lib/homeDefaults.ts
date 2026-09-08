@@ -1,44 +1,42 @@
 /**
- * Default (fallback) copy for the Home marketing page. Every block is
- * operator-editable via the `home_content` setting (arcavia-admin →
- * Configuración → Página de inicio); the admin editor pre-fills its fields
- * from these defaults so the current text can be edited in place, and the
- * player falls back to them field-by-field when the setting is unset.
- * Hand-mirrored in arcavia-frontend/src/content/homeDefaults.ts — keep in sync.
- *
- * Multi-paragraph bodies use blank-line separators; `headline` uses \n for
- * its designed line break.
+ * Default copy of the player app's Home page (Figma HOME frame 316:40) — the
+ * editor pre-fills its fields with these so the operator edits the live text in
+ * place, and the player falls back to them field-by-field when unset.
+ * Hand-mirrored from arcavia-frontend/src/content/homeDefaults.ts — keep in sync.
  */
 export const HOME_DEFAULTS = {
-  headline: 'Plataforma de\ngamificación urbana',
-  need_title: 'Necesidad',
-  need_body:
-    'El turismo urbano actual es pasivo y concentrado, impidiendo que muchos negocios locales atraigan clientes.\n\nEsto abre la oportunidad de transformar la experiencia urbana uniendo exploración, juego y economía local.',
-  solution_title: 'Solución',
-  solution_body:
-    'ARCAVIA QUEST es una plataforma de gamificación urbana que conecta turismo y comercio local.\n\nA través de juegos narrativos y retos, transforma la ciudad en un escenario interactivo y cultural.',
-  how_title: 'Cómo Funciona',
+  hero_intro: 'Cada lugar esconde una historia.\nCada pregunta revela un secreto.',
+  hero_tagline: '¿Te atreves a descubrir lo que pocos conocen?',
+  headline: 'El mundo se convierte en una aventura',
+  headline_body:
+    'Explora y descubre cada ciudad a través de su cultura, sus historias, experiencias y recompensas.',
+  city_title: 'La ciudad se vive, no solo se visita',
+  city_body:
+    'Arcavia transforma cada recorrido en una experiencia que invita a explorar, descubrir el patrimonio, conectar con negocios locales y vivir la ciudad por más tiempo.',
+  how_title: '¡Tu aventura comienza aquí!',
   how_steps: [
-    { title: 'Registro', body: 'El usuario se registra en la app.' },
-    { title: 'Selección', body: 'Elige una ruta urbana.' },
-    { title: 'Acción', body: 'Resuelve acertijos en lugares reales.' },
-    { title: 'Validación', body: 'Visita patrocinadores para avanzar.' },
-    { title: 'Meta', body: 'Consigue palabras clave y resuelve el acertijo final.' },
-    { title: 'Competición', body: 'Compite en el ranking de la temporada.' },
+    { title: 'Únete', body: 'Crea tu perfil' },
+    { title: 'Elige', body: 'Escoge tu aventura' },
+    { title: 'Descifra', body: 'Supera los retos' },
+    { title: 'Explora', body: 'Visita y desbloquea pistas' },
+    { title: 'Desbloquea', body: 'Descubre la clave final' },
+    { title: 'Compite', body: 'Ranking de temporada' },
   ],
-  vision_title: 'El mundo está listo; nuestro momento es ahora',
-  vision_intro:
-    'Nuestra visión cobra vida gracias a un movimiento global que late con fuerza a través de realidades muy claras.',
-  vision_points: [
-    'El deseo profundo de vivir las ciudades en lugar de solo visitarlas.',
-    'La evolución hacia ciudades mucho más humanas, conectadas y vivas.',
-    'El anhelo colectivo de jugar, descubrir y emocionarnos juntos.',
-    'La tecnología móvil guiando nuestros pasos hacia historias reales.',
-    'El compromiso urgente de devolverle la vida y el corazón a nuestros barrios.',
+  legend_title: 'La leyenda del Ángel',
+  legend_subtitle: 'Bienvenido, Explorador…',
+  legend_body:
+    'Dicen que cada ciudad guarda un tesoro. No de oro ni de joyas, sino de historias, secretos y lugares que pocos se detienen a mirar.\n\nHace mucho tiempo apareció un misterioso viajero que guiaba a quienes deseaban descubrirlos. Lo llamaron El Ángel. Hoy, su espíritu vive en un nuevo compañero, creado para caminar contigo, descubrir lo invisible y convertir cada viaje en una historia inolvidable.\n\nPorque el verdadero tesoro nunca estuvo escondido bajo tierra.\n\nSiempre estuvo esperando ser descubierto.',
+  feature_title: 'El mundo real acaba de convertirse en tu aventura',
+  feature_body: 'Explora lugares. Descifra secretos. Supera misiones. Conquista recompensas.',
+  tiers_title: '¿Hasta dónde llegarás?',
+  tiers_intro: 'Cada misión te acerca a algo más',
+  tiers: [
+    { title: 'Durante la misión', body: 'Obtén recompensas' },
+    { title: 'Misiones completadas', body: 'Desbloquea beneficios exclusivos' },
+    { title: 'Ranking mensual', body: 'Compite por premios especiales' },
+    { title: 'Top de temporada', body: 'Premios para los aventureros' },
+    { title: 'Exploradores élite', body: 'Accede a privilegios Arcavia' },
   ],
-  band_text:
-    'ARCAVIA QUEST gamifica ciudades globalmente conectando cultura, tecnología y comercio local.',
-  play_title: 'Juega y gana premios',
   closing_title: '¡Estás listo!',
   closing_body: 'Explora y experimenta las ciudades del mundo.',
 } as const

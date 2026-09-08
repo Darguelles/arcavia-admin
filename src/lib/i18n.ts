@@ -193,28 +193,43 @@ export const t = {
   termsAndConditionsHint: 'Texto legal que ven los jugadores desde el menú de información.',
   homeContent: 'Página de inicio',
   homeContentHint:
-    'Textos y patrocinadores de la página de inicio de la app del jugador. Los campos vacíos no se muestran.',
-  homeHeroIntro: 'Introducción (portada)',
+    'Textos y fotos de la página de inicio de la app del jugador (diseño «HOME»). Cada campo viene con el texto actual; déjalo vacío para volver al texto por defecto.',
+  homeHeroSection: 'Portada',
+  homeHeroIntro: 'Introducción (salto de línea = dos líneas)',
+  homeHeroTagline: 'Pregunta destacada (dorada)',
+  homeHeadline: 'Titular «El mundo se convierte en una aventura»',
   homeHeadlineBody: 'Texto bajo el titular',
-  homeSectionTitle: 'Título de sección intermedia',
-  homePlayIntro: '«Juega y gana premios» — introducción',
-  homePlayOutro: '«Juega y gana premios» — cierre',
-  homeHeadline: 'Titular principal (salto de línea = dos líneas)',
-  homeNeedSection: 'Tarjeta «Necesidad»',
-  homeSolutionSection: 'Tarjeta «Solución»',
-  homeHowSection: 'Tarjeta «Cómo Funciona»',
-  homeVisionSection: 'Sección «El mundo está listo»',
-  homeVisionPoints: 'Puntos (uno por línea)',
-  homeBandText: 'Banda dorada — texto',
-  homePlayTitle: 'Título «Juega y gana premios»',
+  homeCitySection: 'Sección «La ciudad se vive, no solo se visita»',
+  homeHowSection: 'Sección «¡Tu aventura comienza aquí!» (6 pasos)',
+  homeLegendSection: 'Sección «La leyenda del Ángel»',
+  homeLegendSubtitle: 'Subtítulo (dorado)',
+  homeFeatureSection: 'Tarjeta dorada',
+  homeTiersSection: 'Sección «¿Hasta dónde llegarás?» (5 niveles)',
+  homeTiersIntro: 'Introducción',
   homeClosingSection: 'Cierre de la página',
   fieldTitle: 'Título',
   fieldBody: 'Texto',
-  homeImages: 'Imágenes de la página',
+  homeImages: 'Fotos de la página',
   homeImagesHint:
-    'Fotos que llenan los espacios reservados de la página de inicio. JPG, PNG o WebP — máximo 5 MB.',
-  homeHeroImage: 'Imagen de portada (bajo el logo)',
-  homeBrandMark: 'Marca / sello (tarjetas blancas)',
+    'Reemplazan las fotos de diseño que la app trae por defecto. JPG, PNG o WebP — máximo 5 MB.',
+  homeHeroImage: 'Portada — el Ángel (bajo el logo)',
+  homeLegendImage: '«La leyenda del Ángel» — foto',
+  homeFeatureImage: 'Tarjeta dorada — foto',
+  // Recommended resolutions: 2× the player render size (Figma frame) so the
+  // photo stays sharp on high-density phones. The player crops to fit
+  // (object-cover), so the aspect ratio matters more than exact pixels.
+  imageSpecLabel: 'Resolución recomendada',
+  homeHeroImageSpec:
+    '650 × 650 px (cuadrada, 1:1). Se muestra a 322 × 325 y se recorta por arriba.',
+  homeLegendImageSpec: '640 × 450 px (horizontal, 10:7). Se muestra a 320 × 224.',
+  homeFeatureImageSpec: '570 × 480 px (horizontal, 6:5). Se muestra a 283 × 240.',
+  landmarkImageSpec: '560 × 900 px (vertical, 5:8). Cada tarjeta se muestra a 280 × 450.',
+  logoImageSpec:
+    'Mínimo 800 px de ancho, proporción ~2:1 (p. ej. 800 × 380 px). PNG o SVG con fondo transparente.',
+  missionImageSpec:
+    '1000 × 1000 px (cuadrada, 1:1) o mayor. Se recorta al centro: 370 × 329 en la lista y 402 × 453 en la misión.',
+  challengeImageSpec:
+    '810 × 910 px (vertical, 8:9) o mayor. Se muestra a 402 × 453 en pantalla completa.',
   noImage: 'Sin imagen',
   homeLandmarks: 'Carrusel de lugares destacados',
   homeLandmarksHint:
@@ -223,12 +238,6 @@ export const t = {
   landmarkCaption: 'Descripción (opcional)',
   addLandmark: 'Agregar imagen',
   landmarkLimitReached: 'Límite de 8 imágenes alcanzado.',
-  homeSponsors: 'Patrocinadores',
-  homeSponsorsHint:
-    'Banners que se muestran en la sección «Juega y gana premios». JPG, PNG o WebP — máximo 5 MB.',
-  sponsorName: 'Nombre del patrocinador',
-  sponsorLink: 'Enlace (opcional)',
-  addSponsor: 'Agregar patrocinador',
 
   // Login (split-screen redesign)
   loginBrandTitle: 'Administrador',
@@ -368,6 +377,9 @@ export const t = {
     `La categoría "${name}" no suma puntos. Activa al menos un punto suyo con puntos.`,
   errCategoryInUse: 'La categoría tiene puntos asignados. Reasigna o elimina sus puntos primero.',
   errPhaseInUse: 'La fase tiene puntos asignados. Elimina sus puntos primero.',
+  errChallengeOptionInUse:
+    'Algún jugador ya respondió con una de las alternativas que quitaste. Edita su texto en lugar de eliminarla.',
+  errChallengeInUse: 'Algún jugador ya respondió esta pregunta; no se puede eliminar.',
   errInvalidOptions: 'Cada pregunta necesita al menos 2 opciones y una correcta.',
   errKeywordRequired: 'La verificación por palabra clave necesita una pregunta y una respuesta.',
   errCategoryMissionMismatch: 'La categoría seleccionada no pertenece a esta misión.',

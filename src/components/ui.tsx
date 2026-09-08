@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '../lib/utils'
+import { t } from '../lib/i18n'
 
 /**
  * Vocabulario visual del panel (sistema de diseño "Arcavia Admin — Propuesta").
@@ -80,6 +81,21 @@ export const card = 'rounded-card border border-line bg-surface'
 
 /** Etiqueta en caja alta (11/16 · 600 · 0.1em). */
 export const overline = 'text-[11px] leading-4 font-semibold tracking-[0.1em] uppercase text-faint'
+
+// ── Especificación de imagen ─────────────────────────────────────────────
+/**
+ * Resolución recomendada junto a cada control de subida de imagen. Los
+ * tamaños vienen del tamaño de render en la app del jugador (Figma) al doble
+ * (2×) para pantallas de alta densidad; `spec` es la cadena ya traducida
+ * (p. ej. `t.missionImageSpec`).
+ */
+export function ImageSpec({ spec, className }: { spec: string; className?: string }) {
+  return (
+    <p className={cn('m-0 text-[12.5px] leading-[18px] text-faint', className)}>
+      <span className="font-semibold text-muted">{t.imageSpecLabel}:</span> {spec}
+    </p>
+  )
+}
 
 // ── Distintivos de estado ────────────────────────────────────────────────
 type BadgeVariant = 'success' | 'neutral' | 'warn' | 'danger' | 'admin' | 'outline'

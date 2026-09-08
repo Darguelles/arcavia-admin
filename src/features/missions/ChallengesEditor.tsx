@@ -24,7 +24,14 @@ import { FormField } from '../../components/FormField'
 import { TranslationsEditor } from '../../components/TranslationsEditor'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
-import { btnAddDashed, btnIconSmDanger, btnSecondary, card, linkAction } from '../../components/ui'
+import {
+  btnAddDashed,
+  btnIconSmDanger,
+  btnSecondary,
+  card,
+  linkAction,
+  ImageSpec,
+} from '../../components/ui'
 import { translateApiError } from '../../lib/apiErrors'
 import { t } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
@@ -566,6 +573,7 @@ function ChallengeImageSection({
       <div>
         <h5 className="m-0 text-[13px] font-semibold text-ink">{t.challengeImage}</h5>
         <p className="m-0 mt-0.5 text-[13px] text-muted">{t.challengeImageHint}</p>
+        <ImageSpec spec={t.challengeImageSpec} className="mt-1" />
       </div>
 
       <div className="flex items-center gap-5">
