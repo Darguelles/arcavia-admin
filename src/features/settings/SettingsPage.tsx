@@ -850,6 +850,7 @@ function ContentSection() {
         label={t.termsAndConditions}
         hint={t.termsAndConditionsHint}
       />
+      <PlainTextSetting settingKey="contact_info" label={t.contactInfo} hint={t.contactInfoHint} />
     </div>
   )
 }

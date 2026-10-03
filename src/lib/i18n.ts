@@ -206,6 +206,9 @@ export const t = {
     'Cómo jugar, ganar puntos y completar misiones. Se muestra en la app del jugador.',
   termsAndConditions: 'Términos y condiciones',
   termsAndConditionsHint: 'Texto legal que ven los jugadores desde el menú de información.',
+  contactInfo: 'Contáctanos',
+  contactInfoHint:
+    'Correo, teléfono o redes de contacto. Se muestra en Infórmate → Contáctanos en la app del jugador.',
   homeContent: 'Página de inicio',
   homeContentHint:
     'Textos y fotos de la página de inicio de la app del jugador (diseño «HOME»). Cada campo viene con el texto actual; déjalo vacío para volver al texto por defecto.',
