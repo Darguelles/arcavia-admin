@@ -98,9 +98,10 @@ City → Campaign → Mission → (Categories + Phases) → Waypoints → (Chall
   admin can require on top (e.g. geo+QR for a reward-bearing waypoint at a site where QR is
   physically allowed; geo+keyword — an on-site question, `onsite_keyword_prompt`/
   `onsite_keyword_answer` — where it isn't). `required_accuracy_m`/`dwell_seconds`/
-  `min_fixes` tune the geofence. **Guardrail**: the API rejects saving a waypoint with an
-  active reward if both `requires_qr` and `requires_keyword` are off
-  (`GEO_ONLY_PRIZE_CONFLICT`) — raw dwell-only presence is never sufficient alone for a prize.
+  `min_fixes` tune the geofence. **QR and keyword are always optional** — even for points with a
+  reward; the `requireQrHint` only *recommends* one there (the old
+  `GEO_ONLY_PRIZE_CONFLICT` guard was removed 2026-10-03: it counted mission-level rewards
+  and blocked activating every point of the seeded missions).
 - **Challenge** — a question attached to a waypoint (`prompt` + ≥2 `options`, exactly one
   correct). May be a **riddle** (`is_riddle` → `keyword` + `fun_fact`, revealed only on a
   correct answer). Unrelated to a waypoint's `onsite_keyword_*` fields — same word, two

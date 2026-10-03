@@ -36,7 +36,6 @@ describe('translateApiError', () => {
     expect(translateApiError(err('WAYPOINT_HAS_NO_CHALLENGES', '', 409))).toBe(
       t.waypointNoChallengesHint
     )
-    expect(translateApiError(err('GEO_ONLY_PRIZE_CONFLICT'))).toBe(t.geoOnlyPrizeConflict)
     expect(translateApiError(err('KEYWORD_REQUIRED'))).toBe(t.errKeywordRequired)
     expect(translateApiError(err('CATEGORY_IN_USE', '', 409))).toBe(t.errCategoryInUse)
     expect(translateApiError(err('PHASE_IN_USE', '', 409))).toBe(t.errPhaseInUse)

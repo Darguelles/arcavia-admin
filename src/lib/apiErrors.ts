@@ -34,8 +34,6 @@ export function translateApiError(err: unknown): string {
       return t.errMissionNotArchived
     case 'PHASE_ARCHIVED':
       return t.errPhaseArchived
-    case 'GEO_ONLY_PRIZE_CONFLICT':
-      return t.geoOnlyPrizeConflict
     case 'KEYWORD_REQUIRED':
       return t.errKeywordRequired
     case 'CATEGORY_IN_USE':

@@ -463,8 +463,6 @@ export const t = {
   onsiteKeywordPromptHint: 'Algo que solo se puede leer estando físicamente en el lugar.',
   onsiteKeywordAnswer: 'Respuesta esperada',
   onsiteKeywordAnswerHint: 'Nunca se muestra al jugador — se compara en el servidor.',
-  geoOnlyPrizeConflict:
-    'Un punto con premio no puede depender solo de la ubicación — requiere QR o palabra clave también.',
 
   // Operator review queue (flagged geo check-in attempts)
   reviewQueue: 'Verificaciones',
