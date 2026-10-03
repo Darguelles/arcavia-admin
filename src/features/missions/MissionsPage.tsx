@@ -8,7 +8,7 @@ import { DataTable } from '../../components/DataTable'
 import { useCityFilter } from '../../components/Layout'
 import { Badge, btnPrimary, btnRowAction } from '../../components/ui'
 import { t } from '../../lib/i18n'
-import { cn } from '../../lib/utils'
+import { cn, formatDate } from '../../lib/utils'
 
 const LIMIT = 20
 
@@ -18,12 +18,14 @@ const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   alta: t.difficultyAlta,
 }
 
-type StatusFilter = 'all' | 'active' | 'draft'
+type StatusFilter = 'all' | 'active' | 'draft' | 'archived'
 
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: t.filterTabAll },
   { key: 'active', label: t.filterTabActive },
   { key: 'draft', label: t.filterTabDraft },
+  // removed missions — kept for review and restore, never shown to players
+  { key: 'archived', label: t.filterTabArchived },
 ]
 
 export function MissionsPage() {
@@ -38,12 +40,17 @@ export function MissionsPage() {
     search,
     limit: LIMIT,
     offset,
+    archived: status === 'archived',
   })
 
   const items = (data?.items ?? []).filter((m) =>
-    status === 'all' ? true : status === 'active' ? m.is_active : !m.is_active
+    status === 'all' || status === 'archived'
+      ? true
+      : status === 'active'
+        ? m.is_active
+        : !m.is_active
   )
-  const total = status === 'all' ? (data?.total ?? 0) : items.length
+  const total = status === 'all' || status === 'archived' ? (data?.total ?? 0) : items.length
 
   const columns: ColumnDef<Mission, unknown>[] = [
     {
@@ -71,11 +78,16 @@ export function MissionsPage() {
     {
       accessorKey: 'is_active',
       header: t.filterStatus,
-      cell: ({ row }) => (
-        <Badge variant={row.original.is_active ? 'success' : 'neutral'}>
-          {row.original.is_active ? t.active : t.inactive}
-        </Badge>
-      ),
+      cell: ({ row }) =>
+        row.original.archived_at ? (
+          <Badge variant="danger">
+            {t.missionArchivedOn(formatDate(row.original.archived_at))}
+          </Badge>
+        ) : (
+          <Badge variant={row.original.is_active ? 'success' : 'neutral'}>
+            {row.original.is_active ? t.active : t.inactive}
+          </Badge>
+        ),
     },
     {
       id: 'actions',

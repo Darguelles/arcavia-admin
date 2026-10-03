@@ -20,6 +20,7 @@ export interface AuditLogFilters {
   actor_user_id?: string
   action?: string
   target_type?: string
+  target_id?: string
   date_from?: string
   date_to?: string
   limit?: number
@@ -31,9 +32,10 @@ export const auditKeys = {
   list: (filters: AuditLogFilters) => ['audit', 'list', filters] as const,
 }
 
-export function useAuditLog(filters: AuditLogFilters) {
+export function useAuditLog(filters: AuditLogFilters, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: auditKeys.list(filters),
+    enabled: options?.enabled ?? true,
     queryFn: () => {
       const params = new URLSearchParams()
       for (const [key, value] of Object.entries(filters)) {

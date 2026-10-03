@@ -1,6 +1,21 @@
 // Admin UI language strings (es default per spec §3)
 // All labels and messages the admin operator sees are in Spanish.
 
+interface DeletionImpactCounts {
+  phases: number
+  waypoints: number
+  categories: number
+  players_with_progress: number
+}
+
+const plural = (n: number, one: string, many: string) => (n === 1 ? one : many)
+
+// Removal never touches player history — say so whenever someone has played it.
+const historyKept = (players: number) =>
+  players > 0
+    ? ` ${plural(players, '1 jugador conservará', `${players} jugadores conservarán`)} su historial y sus puntos.`
+    : ''
+
 export const t = {
   // Navigation
   dashboard: 'Panel',
@@ -375,7 +390,8 @@ export const t = {
   errPhaseNoActiveWaypoint: (name: string) => `La fase "${name}" no tiene ningún punto activo.`,
   errCategoryNoPoints: (name: string) =>
     `La categoría "${name}" no suma puntos. Activa al menos un punto suyo con puntos.`,
-  errCategoryInUse: 'La categoría tiene puntos asignados. Reasigna o elimina sus puntos primero.',
+  errCategoryInUse:
+    'La categoría tiene puntos activos. Reasígnalos a otra categoría o elimínalos primero.',
   errPhaseInUse: 'La fase tiene puntos asignados. Elimina sus puntos primero.',
   errChallengeOptionInUse:
     'Algún jugador ya respondió con una de las alternativas que quitaste. Edita su texto en lugar de eliminarla.',
@@ -385,8 +401,31 @@ export const t = {
   errCategoryMissionMismatch: 'La categoría seleccionada no pertenece a esta misión.',
 
   deleteCategoryConfirm: (name: string) =>
-    `¿Eliminar la categoría "${name}"? Reasigna o elimina sus puntos primero.`,
-  deletePhaseConfirm: (name: string) => `¿Eliminar la fase "${name}"? Elimina sus puntos primero.`,
+    `¿Eliminar la categoría "${name}"? Solo es posible si no tiene puntos activos; reasígnalos o elimínalos primero.`,
+  deletePhaseConfirm: (name: string, waypoints: number, players: number) =>
+    `¿Eliminar la fase "${name}"` +
+    (waypoints > 0
+      ? ` y ${plural(waypoints, 'su punto', `sus ${waypoints} puntos`)}? Dejarán de mostrarse a los jugadores y de sumar a su categoría.`
+      : '?') +
+    historyKept(players),
+  deleteMission: 'Eliminar misión',
+  deleteMissionConfirm: (name: string, impact: DeletionImpactCounts) =>
+    `¿Eliminar la misión "${name}"? Se eliminarán ${plural(impact.phases, '1 fase', `${impact.phases} fases`)}, ` +
+    `${plural(impact.waypoints, '1 punto', `${impact.waypoints} puntos`)} y ` +
+    `${plural(impact.categories, '1 categoría', `${impact.categories} categorías`)}. ` +
+    'La misión dejará de mostrarse a los jugadores.' +
+    historyKept(impact.players_with_progress) +
+    ' Podrás restaurarla desde "Eliminadas".',
+  loadingImpact: 'Calculando qué se eliminará…',
+  filterTabArchived: 'Eliminadas',
+  missionArchivedBadge: 'Eliminada',
+  archivedMissionBanner: (when: string, by: string | null) =>
+    `Misión eliminada el ${when}${by ? ` por ${by}` : ''}. No se muestra a los jugadores; el historial de quienes la jugaron se conserva. Restáurala para volver a editarla y publicarla.`,
+  missionArchivedOn: (when: string) => `Eliminada · ${when}`,
+  errMissionArchived: 'La misión está eliminada. Restáurala antes de activarla.',
+  errMissionNotArchived: 'La misión no está eliminada.',
+  errPhaseArchived:
+    'Este punto se eliminó junto con su fase o misión. Restaura la misión para recuperarlo.',
   deleteWaypointConfirm: (name: string) =>
     `¿Eliminar el punto "${name}"? Dejará de mostrarse a los jugadores y de sumar a su categoría. Podrás restaurarlo desde "Puntos eliminados" en la fase.`,
   archivedWaypoints: 'Puntos eliminados',

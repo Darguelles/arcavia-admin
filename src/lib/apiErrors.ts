@@ -28,6 +28,12 @@ export function translateApiError(err: unknown): string {
       return t.errWaypointArchived
     case 'WAYPOINT_NOT_ARCHIVED':
       return t.errWaypointNotArchived
+    case 'MISSION_ARCHIVED':
+      return t.errMissionArchived
+    case 'MISSION_NOT_ARCHIVED':
+      return t.errMissionNotArchived
+    case 'PHASE_ARCHIVED':
+      return t.errPhaseArchived
     case 'GEO_ONLY_PRIZE_CONFLICT':
       return t.geoOnlyPrizeConflict
     case 'KEYWORD_REQUIRED':

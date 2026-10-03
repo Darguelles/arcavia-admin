@@ -1,12 +1,25 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from './client'
-import type { Difficulty, Mission, MissionCreate, MissionUpdate, Page } from './types'
+import type {
+  DeletionImpact,
+  Difficulty,
+  Mission,
+  MissionCreate,
+  MissionUpdate,
+  Page,
+} from './types'
 
 export const missionKeys = {
   all: ['missions'] as const,
-  list: (params?: { campaignId?: string; cityId?: string; search?: string; offset?: number }) =>
-    ['missions', 'list', params] as const,
+  list: (params?: {
+    campaignId?: string
+    cityId?: string
+    search?: string
+    offset?: number
+    archived?: boolean
+  }) => ['missions', 'list', params] as const,
   detail: (id: string) => ['missions', id] as const,
+  deletionImpact: (id: string) => ['missions', id, 'deletion-impact'] as const,
 }
 
 interface MissionApi {
@@ -22,6 +35,7 @@ interface MissionApi {
   estimated_time_minutes: number
   explorers_count: number
   is_active: boolean
+  archived_at: string | null
 }
 
 function fromApi(m: MissionApi, campaignName = ''): Mission {
@@ -39,6 +53,7 @@ function fromApi(m: MissionApi, campaignName = ''): Mission {
     estimated_time_minutes: m.estimated_time_minutes,
     explorers_count: m.explorers_count,
     is_active: m.is_active,
+    archived_at: m.archived_at ?? null,
   }
 }
 
@@ -76,6 +91,8 @@ export function useMissions(params?: {
   search?: string
   limit?: number
   offset?: number
+  // removed missions only (the API lists live ones by default)
+  archived?: boolean
 }) {
   return useQuery({
     queryKey: missionKeys.list(params),
@@ -85,6 +102,7 @@ export function useMissions(params?: {
       if (params?.cityId) qs.set('city_id', params.cityId)
       if (params?.limit) qs.set('limit', String(params.limit))
       if (params?.offset) qs.set('offset', String(params.offset))
+      if (params?.archived) qs.set('archived', 'true')
       // The API doesn't join the campaign name (or support search), so fetch
       // campaigns to resolve names and filter client-side.
       const [rows, campaigns] = await Promise.all([
@@ -136,11 +154,46 @@ export function useUpdateMission(id: string) {
   })
 }
 
+// Unpublish only — the mission stays editable and can be re-activated.
 export function useDeactivateMission(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiClient.patch<MissionApi>(`/api/v1/admin/missions/${id}`, { is_active: false }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: missionKeys.all }),
+  })
+}
+
+export function useMissionDeletionImpact(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: missionKeys.deletionImpact(id),
+    queryFn: () => apiClient.get<DeletionImpact>(`/api/v1/admin/missions/${id}/deletion-impact`),
+    enabled: !!id && enabled,
+    staleTime: 0,
+  })
+}
+
+// Removes the mission with its phases, categories and points (archived
+// server-side; player history is kept). Reversible with useRestoreMission.
+export function useDeleteMission(id: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () => apiClient.delete<void>(`/api/v1/admin/missions/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: missionKeys.all }),
+  })
+}
+
+export function useRestoreMission(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () =>
+      fromApi(await apiClient.post<MissionApi>(`/api/v1/admin/missions/${id}/restore`)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: missionKeys.all })
+      qc.invalidateQueries({ queryKey: ['phases'] })
+      qc.invalidateQueries({ queryKey: ['categories'] })
+      qc.invalidateQueries({ queryKey: ['waypoints'] })
+    },
   })
 }
 

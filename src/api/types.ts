@@ -98,6 +98,18 @@ export interface Mission {
   estimated_time_minutes: number
   explorers_count: number
   is_active: boolean
+  // Set when an admin removed the mission. Distinct from is_active=false (a
+  // draft or unpublished mission): removed missions leave the player app for
+  // good but keep every player's history.
+  archived_at: string | null
+}
+
+/** What removing a mission/phase will take with it — shown before confirming. */
+export interface DeletionImpact {
+  phases: number
+  waypoints: number
+  categories: number
+  players_with_progress: number
 }
 
 export interface MissionCreate {
@@ -121,6 +133,7 @@ export interface MissionCategory {
   threshold_pct: number
   total_points: number
   order_index: number
+  archived_at: string | null
 }
 export interface MissionCategoryCreate {
   name: string
@@ -136,6 +149,7 @@ export interface Phase {
   mission_id: string
   name: string
   order_index: number
+  archived_at: string | null
 }
 export interface PhaseCreate {
   name: string
@@ -295,6 +309,8 @@ export interface MissionProgress {
   waypoints_completed: number
   waypoints_total: number
   completed_at: string | null
+  // the mission was removed by an admin; the player's history is kept as-is
+  mission_archived_at: string | null
   categories: CategoryProgress[]
 }
 

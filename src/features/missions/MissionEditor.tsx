@@ -2,18 +2,22 @@ import { useState, useEffect, useRef, type ChangeEvent } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Power } from 'lucide-react'
+import { ArrowLeft, Power, RotateCcw, Trash2, TriangleAlert } from 'lucide-react'
 import {
   useMission,
   useCreateMission,
   useUpdateMission,
   useDeactivateMission,
+  useDeleteMission,
+  useMissionDeletionImpact,
+  useRestoreMission,
   useUploadMissionImage,
   useDeleteMissionImage,
 } from '../../api/missions'
 import { useCampaigns } from '../../api/campaigns'
 import { useCategories } from '../../api/categories'
 import { usePhases } from '../../api/phases'
+import { useAuditLog } from '../../api/audit'
 import {
   missionDetailsSchema,
   missionCreateSchema,
@@ -40,7 +44,7 @@ import { PhasesEditor } from './PhasesEditor'
 import { MissionReadinessPanel } from './MissionReadinessPanel'
 import { t } from '../../lib/i18n'
 import { translateApiError } from '../../lib/apiErrors'
-import { cn } from '../../lib/utils'
+import { cn, formatDateTime } from '../../lib/utils'
 import { ApiClientError } from '../../api/client'
 
 type Tab = 'details' | 'categories' | 'phases'
@@ -73,11 +77,24 @@ export function MissionEditor() {
   const activeTab: Tab = TAB_FROM_PARAM[searchParams.get('tab') ?? ''] ?? 'details'
   const setActiveTab = (tab: Tab) => setSearchParams({ tab: TAB_TO_PARAM[tab] }, { replace: true })
   const [confirmDeactivate, setConfirmDeactivate] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const { data: mission, isLoading } = useMission(id ?? '')
   const createMission = useCreateMission()
   const updateMission = useUpdateMission(id ?? '')
   const deactivateMission = useDeactivateMission(id ?? '')
+  const deleteMission = useDeleteMission(id ?? '')
+  const restoreMission = useRestoreMission(id ?? '')
+  // Counts are fetched when the dialog opens so the operator sees exactly
+  // what goes with the mission before confirming.
+  const { data: impact } = useMissionDeletionImpact(id ?? '', confirmDelete)
+  const isArchived = !!mission?.archived_at
+  // Who removed it — best effort (the audit log may be off-limits for the role).
+  const { data: archiveAudit } = useAuditLog(
+    { action: 'ADMIN_MISSION_ARCHIVED', target_id: id, limit: 1 },
+    { enabled: isArchived }
+  )
+  const archivedBy = isArchived ? (archiveAudit?.items[0]?.actor_email ?? null) : null
   const { data: campaignsPage } = useCampaigns({ limit: 200 })
   const campaigns = campaignsPage?.items ?? []
   const { data: categories } = useCategories(id ?? '')
@@ -138,6 +155,27 @@ export function MissionEditor() {
     try {
       await updateMission.mutateAsync(data)
       toast.success(t.saved)
+    } catch (err) {
+      toast.error(translateApiError(err))
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      await deleteMission.mutateAsync()
+      toast.success(t.deleted)
+      navigate('/admin/missions')
+    } catch (err) {
+      toast.error(translateApiError(err))
+    } finally {
+      setConfirmDelete(false)
+    }
+  }
+
+  async function handleRestore() {
+    try {
+      await restoreMission.mutateAsync()
+      toast.success(t.restored)
     } catch (err) {
       toast.error(translateApiError(err))
     }
@@ -304,20 +342,54 @@ export function MissionEditor() {
             {mission?.name}
           </h2>
         </div>
-        <Badge variant={mission?.is_active ? 'success' : 'neutral'}>
-          {mission?.is_active ? t.active : t.filterTabDraft}
-        </Badge>
-        {mission?.is_active && (
-          <button
-            type="button"
-            onClick={() => setConfirmDeactivate(true)}
-            className={cn(btnDanger, 'ml-auto')}
-          >
-            <Power size={16} strokeWidth={1.5} />
-            {t.deactivate}
-          </button>
+        {isArchived ? (
+          <Badge variant="danger">{t.missionArchivedBadge}</Badge>
+        ) : (
+          <Badge variant={mission?.is_active ? 'success' : 'neutral'}>
+            {mission?.is_active ? t.active : t.filterTabDraft}
+          </Badge>
+        )}
+        {mission && !isArchived && (
+          <div className="ml-auto flex gap-2.5">
+            {mission.is_active && (
+              <button type="button" onClick={() => setConfirmDeactivate(true)} className={btnGhost}>
+                <Power size={16} strokeWidth={1.5} />
+                {t.deactivate}
+              </button>
+            )}
+            <button type="button" onClick={() => setConfirmDelete(true)} className={btnDanger}>
+              <Trash2 size={16} strokeWidth={1.5} />
+              {t.deleteMission}
+            </button>
+          </div>
         )}
       </div>
+
+      {mission?.archived_at && (
+        <div
+          role="status"
+          className="flex items-center gap-3 bg-warn-tint text-warn-text rounded-control px-4 py-3 text-[13px] leading-5"
+        >
+          <TriangleAlert
+            size={16}
+            strokeWidth={1.5}
+            className="shrink-0 text-warn-deep"
+            aria-hidden
+          />
+          <span className="flex-1">
+            {t.archivedMissionBanner(formatDateTime(mission.archived_at), archivedBy)}
+          </span>
+          <button
+            type="button"
+            onClick={handleRestore}
+            disabled={restoreMission.isPending}
+            className={cn(btnSecondary, 'shrink-0')}
+          >
+            <RotateCcw size={14} strokeWidth={1.5} />
+            {t.restore}
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-[1fr_340px] gap-6 items-start">
         <div className="flex flex-col gap-5 min-w-0">
@@ -348,92 +420,101 @@ export function MissionEditor() {
               className="flex flex-col gap-5"
               noValidate
             >
-              {id && <MissionImageSection missionId={id} imageUrl={mission?.image_url ?? null} />}
+              {/* a removed mission is review-only until restored */}
+              <fieldset disabled={isArchived} className="contents">
+                {id && <MissionImageSection missionId={id} imageUrl={mission?.image_url ?? null} />}
 
-              <div className={cn(card, 'p-6 flex flex-col gap-4')}>
-                <FormField
-                  as="input"
-                  label={t.name}
-                  required
-                  error={detailsForm.formState.errors.name?.message}
-                  {...detailsForm.register('name')}
-                />
-                <FormField
-                  as="textarea"
-                  label={t.description}
-                  error={detailsForm.formState.errors.description?.message}
-                  {...detailsForm.register('description')}
-                />
-
-                <div className="grid grid-cols-3 gap-4">
-                  <FormField
-                    as="select"
-                    label={t.difficulty}
-                    error={detailsForm.formState.errors.difficulty?.message}
-                    {...detailsForm.register('difficulty')}
-                  >
-                    {DIFFICULTIES.map((d) => (
-                      <option key={d.value} value={d.value}>
-                        {d.label}
-                      </option>
-                    ))}
-                  </FormField>
+                <div className={cn(card, 'p-6 flex flex-col gap-4')}>
                   <FormField
                     as="input"
-                    label={t.rewardPoints}
-                    hint={t.rewardPointsHint}
-                    type="number"
-                    min={0}
-                    error={detailsForm.formState.errors.reward_points?.message}
-                    {...detailsForm.register('reward_points', { valueAsNumber: true })}
+                    label={t.name}
+                    required
+                    error={detailsForm.formState.errors.name?.message}
+                    {...detailsForm.register('name')}
                   />
                   <FormField
-                    as="input"
-                    label={t.estimatedTime}
-                    type="number"
-                    min={0}
-                    error={detailsForm.formState.errors.estimated_time_minutes?.message}
-                    {...detailsForm.register('estimated_time_minutes', { valueAsNumber: true })}
+                    as="textarea"
+                    label={t.description}
+                    error={detailsForm.formState.errors.description?.message}
+                    {...detailsForm.register('description')}
+                  />
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      as="select"
+                      label={t.difficulty}
+                      error={detailsForm.formState.errors.difficulty?.message}
+                      {...detailsForm.register('difficulty')}
+                    >
+                      {DIFFICULTIES.map((d) => (
+                        <option key={d.value} value={d.value}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </FormField>
+                    <FormField
+                      as="input"
+                      label={t.rewardPoints}
+                      hint={t.rewardPointsHint}
+                      type="number"
+                      min={0}
+                      error={detailsForm.formState.errors.reward_points?.message}
+                      {...detailsForm.register('reward_points', { valueAsNumber: true })}
+                    />
+                    <FormField
+                      as="input"
+                      label={t.estimatedTime}
+                      type="number"
+                      min={0}
+                      error={detailsForm.formState.errors.estimated_time_minutes?.message}
+                      {...detailsForm.register('estimated_time_minutes', { valueAsNumber: true })}
+                    />
+                  </div>
+
+                  <Controller
+                    name="translations"
+                    control={detailsForm.control}
+                    render={({ field }) => (
+                      <TranslationsEditor
+                        fields={[
+                          { key: 'name', label: t.name },
+                          { key: 'description', label: t.description, multiline: true },
+                        ]}
+                        value={field.value ?? {}}
+                        onChange={field.onChange}
+                      />
+                    )}
                   />
                 </div>
 
-                <Controller
-                  name="translations"
-                  control={detailsForm.control}
-                  render={({ field }) => (
-                    <TranslationsEditor
-                      fields={[
-                        { key: 'name', label: t.name },
-                        { key: 'description', label: t.description, multiline: true },
-                      ]}
-                      value={field.value ?? {}}
-                      onChange={field.onChange}
-                    />
-                  )}
-                />
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={detailsForm.formState.isSubmitting || !detailsForm.formState.isDirty}
-                  className={btnSecondary}
-                >
-                  {detailsForm.formState.isSubmitting ? t.loading : t.save}
-                </button>
-              </div>
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={detailsForm.formState.isSubmitting || !detailsForm.formState.isDirty}
+                    className={btnSecondary}
+                  >
+                    {detailsForm.formState.isSubmitting ? t.loading : t.save}
+                  </button>
+                </div>
+              </fieldset>
             </form>
           )}
 
-          {activeTab === 'categories' && id && <CategoriesEditor missionId={id} />}
+          {activeTab === 'categories' && id && (
+            <CategoriesEditor missionId={id} readOnly={isArchived} />
+          )}
 
           {activeTab === 'phases' && id && (
-            <PhasesEditor missionId={id} hasCategories={(categories?.length ?? 0) > 0} />
+            <PhasesEditor
+              missionId={id}
+              hasCategories={(categories?.length ?? 0) > 0}
+              readOnly={isArchived}
+            />
           )}
         </div>
 
         <div className="sticky top-0 flex flex-col gap-5">
-          {id && (
+          {id && !isArchived && (
             <MissionReadinessPanel
               missionId={id}
               isActive={mission?.is_active ?? false}
@@ -451,6 +532,16 @@ export function MissionEditor() {
         onConfirm={handleDeactivate}
         onCancel={() => setConfirmDeactivate(false)}
         loading={deactivateMission.isPending}
+      />
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title={t.deleteMission}
+        message={mission && impact ? t.deleteMissionConfirm(mission.name, impact) : t.loadingImpact}
+        confirmLabel={t.delete}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(false)}
+        loading={deleteMission.isPending || !impact}
       />
     </div>
   )

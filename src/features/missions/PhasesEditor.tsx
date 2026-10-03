@@ -12,7 +12,13 @@ import {
   TriangleAlert,
   X,
 } from 'lucide-react'
-import { usePhases, useCreatePhase, useUpdatePhase, useDeletePhase } from '../../api/phases'
+import {
+  usePhases,
+  useCreatePhase,
+  useUpdatePhase,
+  useDeletePhase,
+  usePhaseDeletionImpact,
+} from '../../api/phases'
 import { useWaypoints, useDeleteWaypoint, useRestoreWaypoint } from '../../api/waypoints'
 import { useCategories } from '../../api/categories'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
@@ -48,9 +54,12 @@ function WarnBanner({ children }: { children: ReactNode }) {
 export function PhasesEditor({
   missionId,
   hasCategories,
+  readOnly = false,
 }: {
   missionId: string
   hasCategories: boolean
+  // a removed mission: its structure is listed for review only
+  readOnly?: boolean
 }) {
   const { data: phases, isLoading } = usePhases(missionId)
   // Shared query key with CategoriesEditor / the readiness panel — resolves
@@ -77,7 +86,7 @@ export function PhasesEditor({
 
   return (
     <div className="flex flex-col gap-5">
-      {!hasCategories && <WarnBanner>{t.noCategoriesYet}</WarnBanner>}
+      {!hasCategories && !readOnly && <WarnBanner>{t.noCategoriesYet}</WarnBanner>}
 
       {phases && phases.length > 0 ? (
         phases.map((p, i) => (
@@ -88,6 +97,7 @@ export function PhasesEditor({
             index={i}
             canAddWaypoint={hasCategories}
             categoryNames={categoryNames}
+            readOnly={readOnly}
           />
         ))
       ) : (
@@ -95,24 +105,26 @@ export function PhasesEditor({
       )}
 
       {/* Add phase */}
-      <div className="flex items-center gap-2">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="h-10 flex-1 max-w-xs rounded-control border border-line-strong bg-surface px-3 text-sm"
-          placeholder={t.addPhase}
-          aria-label={t.phase}
-        />
-        <button
-          type="button"
-          onClick={add}
-          disabled={create.isPending || !name.trim()}
-          className={btnSecondary}
-        >
-          <Plus size={16} strokeWidth={1.5} />
-          {t.addPhase}
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="flex items-center gap-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="h-10 flex-1 max-w-xs rounded-control border border-line-strong bg-surface px-3 text-sm"
+            placeholder={t.addPhase}
+            aria-label={t.phase}
+          />
+          <button
+            type="button"
+            onClick={add}
+            disabled={create.isPending || !name.trim()}
+            className={btnSecondary}
+          >
+            <Plus size={16} strokeWidth={1.5} />
+            {t.addPhase}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -123,12 +135,14 @@ function PhaseCard({
   index,
   canAddWaypoint,
   categoryNames,
+  readOnly,
 }: {
   missionId: string
   phase: Phase
   index: number
   canAddWaypoint: boolean
   categoryNames: Map<string, string>
+  readOnly: boolean
 }) {
   const navigate = useNavigate()
   const { data: waypoints } = useWaypoints(phase.id)
@@ -138,11 +152,13 @@ function PhaseCard({
   const [name, setName] = useState(phase.name)
   const [editing, setEditing] = useState(false)
   const [confirm, setConfirm] = useState(false)
+  const { data: impact } = usePhaseDeletionImpact(phase.id, confirm)
 
   // Deleted points are archived server-side (progress and QR history are
   // kept). They are listed apart, below the live ones, and never counted.
-  const live = (waypoints ?? []).filter((w) => w.archived_at === null)
-  const archived = (waypoints ?? []).filter((w) => w.archived_at !== null)
+  // In a removed mission every point was archived with it — list them all.
+  const live = (waypoints ?? []).filter((w) => readOnly || w.archived_at === null)
+  const archived = (waypoints ?? []).filter((w) => !readOnly && w.archived_at !== null)
   const hasActive = live.some((w) => w.is_active)
   const totalPoints = live.reduce((sum, w) => sum + w.points, 0)
 
@@ -234,26 +250,28 @@ function PhaseCard({
                 // A phase without an active waypoint blocks mission activation.
                 <Badge variant="outline">{t.noActiveWaypointBadge}</Badge>
               ))}
-            <div className="ml-auto flex gap-1.5">
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className={btnIconSm}
-                aria-label={`${t.edit} ${phase.name}`}
-                title={t.edit}
-              >
-                <Pencil size={15} strokeWidth={1.5} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirm(true)}
-                className={btnIconSmDanger}
-                aria-label={`${t.delete} ${phase.name}`}
-                title={t.delete}
-              >
-                <Trash2 size={15} strokeWidth={1.5} />
-              </button>
-            </div>
+            {!readOnly && (
+              <div className="ml-auto flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className={btnIconSm}
+                  aria-label={`${t.edit} ${phase.name}`}
+                  title={t.edit}
+                >
+                  <Pencil size={15} strokeWidth={1.5} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirm(true)}
+                  className={btnIconSmDanger}
+                  aria-label={`${t.delete} ${phase.name}`}
+                  title={t.delete}
+                >
+                  <Trash2 size={15} strokeWidth={1.5} />
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -268,15 +286,16 @@ function PhaseCard({
               phaseId={phase.id}
               waypoint={w}
               categoryName={categoryNames.get(w.category_id) ?? ''}
+              readOnly={readOnly}
             />
           ))}
-          <div className="px-5 py-3">{addWaypointButton}</div>
+          {!readOnly && <div className="px-5 py-3">{addWaypointButton}</div>}
         </>
       ) : (
         waypoints && (
           <div className="px-5 py-[22px] flex flex-col items-start gap-3">
             <p className="m-0 text-[13px] text-muted">{t.noWaypointsYet}</p>
-            {addWaypointButton}
+            {!readOnly && addWaypointButton}
           </div>
         )
       )}
@@ -293,11 +312,15 @@ function PhaseCard({
       <ConfirmDialog
         open={confirm}
         title={t.delete}
-        message={t.deletePhaseConfirm(phase.name)}
+        message={
+          impact
+            ? t.deletePhaseConfirm(phase.name, impact.waypoints, impact.players_with_progress)
+            : t.loadingImpact
+        }
         confirmLabel={t.delete}
         onConfirm={remove}
         onCancel={() => setConfirm(false)}
-        loading={del.isPending}
+        loading={del.isPending || !impact}
       />
     </div>
   )
@@ -353,11 +376,13 @@ function WaypointRow({
   phaseId,
   waypoint,
   categoryName,
+  readOnly = false,
 }: {
   missionId: string
   phaseId: string
   waypoint: Waypoint
   categoryName: string
+  readOnly?: boolean
 }) {
   const navigate = useNavigate()
   const del = useDeleteWaypoint(waypoint.id, phaseId, missionId)
@@ -436,7 +461,7 @@ function WaypointRow({
             {waypoint.is_active ? t.active : t.inactive}
           </Badge>
         )}
-        {isArchived ? (
+        {readOnly ? null : isArchived ? (
           <button
             type="button"
             onClick={(e) => {

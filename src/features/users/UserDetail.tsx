@@ -95,9 +95,15 @@ function MissionRow({ m }: { m: MissionProgress }) {
           <p className="font-medium text-ink">{m.mission_name}</p>
           {m.city_name && <p className="mt-0.5 text-xs text-faint">{m.city_name}</p>}
         </div>
-        <Badge variant={completed ? 'success' : 'warn'}>
-          {completed ? t.statusCompleted : t.statusInProgress}
-        </Badge>
+        <div className="flex shrink-0 gap-1.5">
+          {/* removed by an admin — the player's progress below is kept as-is */}
+          {m.mission_archived_at && (
+            <Badge variant="danger">{t.missionArchivedOn(fmtDate(m.mission_archived_at))}</Badge>
+          )}
+          <Badge variant={completed ? 'success' : 'warn'}>
+            {completed ? t.statusCompleted : t.statusInProgress}
+          </Badge>
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted tnum">

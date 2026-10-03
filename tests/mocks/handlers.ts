@@ -344,6 +344,7 @@ export const handlers = [
         estimated_time_minutes: 60,
         explorers_count: 0,
         is_active: false,
+        archived_at: null,
       },
       {
         id: 'mission-2',
@@ -358,6 +359,7 @@ export const handlers = [
         estimated_time_minutes: 90,
         explorers_count: 12,
         is_active: true,
+        archived_at: null,
       },
     ])
   }),
@@ -376,6 +378,7 @@ export const handlers = [
       estimated_time_minutes: 60,
       explorers_count: 0,
       is_active: false,
+      archived_at: null,
     })
   }),
 
@@ -398,6 +401,15 @@ export const handlers = [
     })
   }),
 
+  // Removal — what goes with the mission, then archive it (204).
+  http.get(`${BASE}/api/v1/admin/missions/:id/deletion-impact`, () =>
+    HttpResponse.json({ phases: 2, waypoints: 5, categories: 1, players_with_progress: 3 })
+  ),
+  http.delete(`${BASE}/api/v1/admin/missions/:id`, () => new HttpResponse(null, { status: 204 })),
+  http.get(`${BASE}/api/v1/admin/phases/:id/deletion-impact`, () =>
+    HttpResponse.json({ phases: 1, waypoints: 2, categories: 0, players_with_progress: 0 })
+  ),
+
   // Cover image — raw image bytes in, mission with image_url out.
   http.put(`${BASE}/api/v1/admin/missions/:id/image`, ({ params }) =>
     HttpResponse.json({
@@ -413,6 +425,7 @@ export const handlers = [
       estimated_time_minutes: 60,
       explorers_count: 0,
       is_active: false,
+      archived_at: null,
     })
   ),
 
@@ -430,6 +443,7 @@ export const handlers = [
       estimated_time_minutes: 60,
       explorers_count: 0,
       is_active: false,
+      archived_at: null,
     })
   ),
 

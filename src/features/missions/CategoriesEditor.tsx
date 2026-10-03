@@ -16,7 +16,14 @@ import type { MissionCategory } from '../../api/types'
 
 const inputClass = 'h-10 rounded-control border border-line-strong bg-surface px-3 text-sm'
 
-export function CategoriesEditor({ missionId }: { missionId: string }) {
+export function CategoriesEditor({
+  missionId,
+  readOnly = false,
+}: {
+  missionId: string
+  // a removed mission: categories are listed for review only
+  readOnly?: boolean
+}) {
   const { data: categories, isLoading } = useCategories(missionId)
   const create = useCreateCategory(missionId)
   const toast = useToast()
@@ -42,7 +49,8 @@ export function CategoriesEditor({ missionId }: { missionId: string }) {
   if (isLoading) return <p className="text-faint">{t.loading}</p>
 
   return (
-    <div className={cn(card, 'p-6 flex flex-col gap-4')}>
+    // a disabled fieldset turns every input/button inside read-only at once
+    <fieldset disabled={readOnly} className={cn(card, 'm-0 min-w-0 p-6 flex flex-col gap-4')}>
       <div>
         <h3 className="m-0 text-[17px] font-semibold text-ink">{t.categories}</h3>
         <p className="m-0 mt-1 text-[13px] text-muted">{t.thresholdHint}</p>
@@ -92,7 +100,7 @@ export function CategoriesEditor({ missionId }: { missionId: string }) {
           {t.add}
         </button>
       </div>
-    </div>
+    </fieldset>
   )
 }
 
