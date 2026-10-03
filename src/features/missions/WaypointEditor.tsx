@@ -3,7 +3,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, RotateCcw, TriangleAlert } from 'lucide-react'
 import { useMission } from '../../api/missions'
 import { useCity } from '../../api/cities'
 import { useCategories } from '../../api/categories'
@@ -11,6 +11,7 @@ import {
   useWaypoint,
   useCreateWaypoint,
   useUpdateWaypoint,
+  useRestoreWaypoint,
   waypointKeys,
 } from '../../api/waypoints'
 import {
@@ -23,7 +24,7 @@ import { FormField } from '../../components/FormField'
 import { MapPicker } from '../../components/MapPicker'
 import { TranslationsEditor } from '../../components/TranslationsEditor'
 import { useToast } from '../../components/Toast'
-import { btnGhost, btnIcon, btnPrimary, card, overline } from '../../components/ui'
+import { btnGhost, btnIcon, btnPrimary, btnSecondary, card, overline } from '../../components/ui'
 import { ChallengesEditor, DraftChallenges, challengeFormToCreate } from './ChallengesEditor'
 import { QRSection } from './QRSection'
 import { t } from '../../lib/i18n'
@@ -51,7 +52,18 @@ export function WaypointEditor() {
   const phaseId = isEdit ? (waypoint?.phase_id ?? '') : (searchParams.get('phaseId') ?? '')
   const createWaypoint = useCreateWaypoint(phaseId, missionId)
   const updateWaypoint = useUpdateWaypoint(waypointId ?? '', phaseId, missionId)
+  const restoreWaypoint = useRestoreWaypoint(waypointId ?? '', phaseId, missionId)
   const queryClient = useQueryClient()
+  const isArchived = isEdit && !!waypoint?.archived_at
+
+  async function restore() {
+    try {
+      await restoreWaypoint.mutateAsync()
+      toast.success(t.restored)
+    } catch (err) {
+      toast.error(translateApiError(err))
+    }
+  }
 
   // On create, questions are buffered here and flushed once the waypoint exists,
   // so a single Save builds the whole point (and can activate it right away).
@@ -221,6 +233,30 @@ export function WaypointEditor() {
           </h2>
         </div>
       </div>
+
+      {isArchived && (
+        <div
+          role="status"
+          className="flex items-center gap-3 bg-warn-tint text-warn-text rounded-control px-4 py-3 text-[13px] leading-5"
+        >
+          <TriangleAlert
+            size={16}
+            strokeWidth={1.5}
+            className="shrink-0 text-warn-deep"
+            aria-hidden
+          />
+          <span className="flex-1">{t.archivedWaypointBanner}</span>
+          <button
+            type="button"
+            onClick={restore}
+            disabled={restoreWaypoint.isPending}
+            className={cn(btnSecondary, 'shrink-0')}
+          >
+            <RotateCcw size={14} strokeWidth={1.5} />
+            {t.restore}
+          </button>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
         <div className={cn(card, 'p-6 flex flex-col gap-4')}>
@@ -398,6 +434,7 @@ export function WaypointEditor() {
               id="wp_active"
               type="checkbox"
               className={checkboxClass}
+              disabled={isArchived}
               {...register('is_active')}
             />
             <label htmlFor="wp_active" className="text-sm font-medium text-ink">

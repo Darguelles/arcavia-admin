@@ -107,6 +107,13 @@ async function request<T>(path: string, init: RequestInit = {}, retry = true): P
       useAuthStore.getState().clearSession()
       throw new ApiClientError(403, err.code, err.message)
     }
+    // The shared refresh cookie now belongs to a PLAYER session (the same
+    // account signed into the player app on this browser) — the panel needs
+    // its own MFA login again.
+    if (err.code === 'ADMIN_SCOPE_REQUIRED') {
+      useAuthStore.getState().clearSession()
+      throw new ApiClientError(403, err.code, err.message)
+    }
     throw new ApiClientError(403, err.code, err.message)
   }
 

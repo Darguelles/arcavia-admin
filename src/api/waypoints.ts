@@ -53,6 +53,20 @@ export function useUpdateWaypoint(id: string, phaseId?: string, missionId?: stri
   })
 }
 
+// DELETE archives (the point keeps its progress and QR history and is listed
+// apart in the phase); restore brings it back as an inactive draft.
+export function useRestoreWaypoint(id: string, phaseId: string, missionId?: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiClient.post<Waypoint>(`/api/v1/admin/waypoints/${id}/restore`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: waypointKeys.detail(id) })
+      qc.invalidateQueries({ queryKey: waypointKeys.byPhase(phaseId) })
+      if (missionId) qc.invalidateQueries({ queryKey: categoryKeys.byMission(missionId) })
+    },
+  })
+}
+
 export function useDeleteWaypoint(id: string, phaseId: string, missionId?: string) {
   const qc = useQueryClient()
   return useMutation({

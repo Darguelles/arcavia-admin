@@ -149,7 +149,10 @@ cannot be active with 0 challenges; a mission cannot activate unless its structu
   `mfa` + `mfa_token` for panel roles (`root`/`admin`/`staff` — see `ADMIN_ROLES` in
   `src/api/types.ts`); tokens are issued by `/auth/mfa/verify` or `/auth/mfa/enroll/confirm`
   (LoginPage is a 3-step state machine). Access token is a JWT; refresh via httpOnly
-  cookie. Root-only: `/admin/team` (team management, `src/features/team/`); root+admin:
+  cookie. **Session scope (2026-09-09):** the panel logs in with `scope: 'admin'`; the same
+  account can log into the player app with `scope: 'player'` (no MFA) and that session can never
+  reach `/admin/*` (`403 ADMIN_SCOPE_REQUIRED` — the client clears the session and RequireAdmin
+  sends the user back to login; `403 NOT_ADMIN` on login = player account). Root-only: `/admin/team` (team management, `src/features/team/`); root+admin:
   `/admin/audit` (audit viewer, `src/features/audit/`); sidebar entries are role-gated
   via `NAV_ITEMS[].roles` in `src/components/Layout.tsx`.
 

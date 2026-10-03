@@ -170,6 +170,8 @@ export interface Waypoint {
   min_fixes: number
   onsite_keyword_prompt: string | null
   onsite_keyword_answer: string | null
+  // set when an admin deleted the point; it is restorable and never shown to players
+  archived_at: string | null
 }
 export interface WaypointCreate {
   category_id: string

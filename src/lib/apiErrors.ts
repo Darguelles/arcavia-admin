@@ -24,6 +24,10 @@ export function translateApiError(err: unknown): string {
     }
     case 'WAYPOINT_HAS_NO_CHALLENGES':
       return t.waypointNoChallengesHint
+    case 'WAYPOINT_ARCHIVED':
+      return t.errWaypointArchived
+    case 'WAYPOINT_NOT_ARCHIVED':
+      return t.errWaypointNotArchived
     case 'GEO_ONLY_PRIZE_CONFLICT':
       return t.geoOnlyPrizeConflict
     case 'KEYWORD_REQUIRED':

@@ -6,7 +6,7 @@ This panel consumes `/api/v1/admin/*` and `/api/v1/auth/*`. The live contract is
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/api/v1/auth/login` | Login — returns `access_token`, `role`, `user_id`, `force_password_reset` |
+| POST | `/api/v1/auth/login` | Login — body `{email, password, scope: "admin"}`. Panel roles get `{mfa, mfa_token}` (tokens only after `/auth/mfa/*`); players get `403 NOT_ADMIN`. The player app sends `scope: "player"` and gets a player session for ANY account (no MFA) that `/admin/*` rejects with `403 ADMIN_SCOPE_REQUIRED`. Post-MFA response: `access_token`, `role`, `user_id`, `force_password_reset` |
 | POST | `/api/v1/auth/logout` | Logout — revokes refresh JTI |
 | POST | `/api/v1/auth/refresh` | Refresh access token via httpOnly cookie |
 | POST | `/api/v1/auth/change-password` | Change password (clears `force_password_reset`) |

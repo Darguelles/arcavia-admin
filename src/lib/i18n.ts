@@ -387,7 +387,17 @@ export const t = {
   deleteCategoryConfirm: (name: string) =>
     `¿Eliminar la categoría "${name}"? Reasigna o elimina sus puntos primero.`,
   deletePhaseConfirm: (name: string) => `¿Eliminar la fase "${name}"? Elimina sus puntos primero.`,
-  deleteWaypointConfirm: (name: string) => `¿Desactivar el punto "${name}"?`,
+  deleteWaypointConfirm: (name: string) =>
+    `¿Eliminar el punto "${name}"? Dejará de mostrarse a los jugadores y de sumar a su categoría. Podrás restaurarlo desde "Puntos eliminados" en la fase.`,
+  archivedWaypoints: 'Puntos eliminados',
+  archivedWaypointsHint: 'No se muestran a los jugadores ni suman a su categoría.',
+  archived: 'Eliminado',
+  restore: 'Restaurar',
+  restored: 'Restaurado correctamente.',
+  archivedWaypointBanner:
+    'Este punto está eliminado: no se muestra a los jugadores ni suma a su categoría. Restáuralo para volver a activarlo.',
+  errWaypointArchived: 'El punto está eliminado. Restáuralo antes de activarlo.',
+  errWaypointNotArchived: 'El punto no está eliminado.',
   deleteChallengeConfirm: '¿Eliminar esta pregunta? No se puede deshacer.',
 
   // Map

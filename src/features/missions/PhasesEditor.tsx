@@ -1,17 +1,19 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  ChevronDown,
   ChevronRight,
   GripVertical,
   MapPin,
   Pencil,
   Plus,
+  RotateCcw,
   Trash2,
   TriangleAlert,
   X,
 } from 'lucide-react'
 import { usePhases, useCreatePhase, useUpdatePhase, useDeletePhase } from '../../api/phases'
-import { useWaypoints, useDeleteWaypoint } from '../../api/waypoints'
+import { useWaypoints, useDeleteWaypoint, useRestoreWaypoint } from '../../api/waypoints'
 import { useCategories } from '../../api/categories'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
@@ -137,8 +139,12 @@ function PhaseCard({
   const [editing, setEditing] = useState(false)
   const [confirm, setConfirm] = useState(false)
 
-  const hasActive = waypoints?.some((w) => w.is_active) ?? false
-  const totalPoints = (waypoints ?? []).reduce((sum, w) => sum + w.points, 0)
+  // Deleted points are archived server-side (progress and QR history are
+  // kept). They are listed apart, below the live ones, and never counted.
+  const live = (waypoints ?? []).filter((w) => w.archived_at === null)
+  const archived = (waypoints ?? []).filter((w) => w.archived_at !== null)
+  const hasActive = live.some((w) => w.is_active)
+  const totalPoints = live.reduce((sum, w) => sum + w.points, 0)
 
   async function save() {
     try {
@@ -222,8 +228,7 @@ function PhaseCard({
             {waypoints &&
               (hasActive ? (
                 <span className="text-xs text-muted tnum">
-                  {waypoints.length} {waypoints.length === 1 ? 'punto' : 'puntos'} · {totalPoints}{' '}
-                  pts
+                  {live.length} {live.length === 1 ? 'punto' : 'puntos'} · {totalPoints} pts
                 </span>
               ) : (
                 // A phase without an active waypoint blocks mission activation.
@@ -254,9 +259,9 @@ function PhaseCard({
       </div>
 
       {/* Waypoints */}
-      {waypoints && waypoints.length > 0 ? (
+      {live.length > 0 ? (
         <>
-          {waypoints.map((w) => (
+          {live.map((w) => (
             <WaypointRow
               key={w.id}
               missionId={missionId}
@@ -268,10 +273,21 @@ function PhaseCard({
           <div className="px-5 py-3">{addWaypointButton}</div>
         </>
       ) : (
-        <div className="px-5 py-[22px] flex flex-col items-start gap-3">
-          <p className="m-0 text-[13px] text-muted">{t.noWaypointsYet}</p>
-          {addWaypointButton}
-        </div>
+        waypoints && (
+          <div className="px-5 py-[22px] flex flex-col items-start gap-3">
+            <p className="m-0 text-[13px] text-muted">{t.noWaypointsYet}</p>
+            {addWaypointButton}
+          </div>
+        )
+      )}
+
+      {archived.length > 0 && (
+        <ArchivedWaypoints
+          missionId={missionId}
+          phaseId={phase.id}
+          waypoints={archived}
+          categoryNames={categoryNames}
+        />
       )}
 
       <ConfirmDialog
@@ -283,6 +299,51 @@ function PhaseCard({
         onCancel={() => setConfirm(false)}
         loading={del.isPending}
       />
+    </div>
+  )
+}
+
+/** Collapsed tail of a phase card listing its deleted (archived) points. */
+function ArchivedWaypoints({
+  missionId,
+  phaseId,
+  waypoints,
+  categoryNames,
+}: {
+  missionId: string
+  phaseId: string
+  waypoints: Waypoint[]
+  categoryNames: Map<string, string>
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="border-t border-line bg-paper">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="w-full flex items-center gap-2 px-5 py-2.5 bg-transparent border-0 text-left cursor-pointer"
+      >
+        {open ? (
+          <ChevronDown size={15} strokeWidth={1.5} className="text-faint" aria-hidden />
+        ) : (
+          <ChevronRight size={15} strokeWidth={1.5} className="text-faint" aria-hidden />
+        )}
+        <span className="text-xs font-semibold text-muted">
+          {t.archivedWaypoints} ({waypoints.length})
+        </span>
+        <span className="text-xs text-faint truncate">{t.archivedWaypointsHint}</span>
+      </button>
+      {open &&
+        waypoints.map((w) => (
+          <WaypointRow
+            key={w.id}
+            missionId={missionId}
+            phaseId={phaseId}
+            waypoint={w}
+            categoryName={categoryNames.get(w.category_id) ?? ''}
+          />
+        ))}
     </div>
   )
 }
@@ -300,17 +361,28 @@ function WaypointRow({
 }) {
   const navigate = useNavigate()
   const del = useDeleteWaypoint(waypoint.id, phaseId, missionId)
+  const restore = useRestoreWaypoint(waypoint.id, phaseId, missionId)
   const toast = useToast()
   const [confirm, setConfirm] = useState(false)
+  const isArchived = waypoint.archived_at !== null
 
   async function remove() {
     try {
       await del.mutateAsync()
-      toast.success(t.deactivated)
+      toast.success(t.deleted)
     } catch (err) {
       toast.error(translateApiError(err))
     } finally {
       setConfirm(false)
+    }
+  }
+
+  async function bringBack() {
+    try {
+      await restore.mutateAsync()
+      toast.success(t.restored)
+    } catch (err) {
+      toast.error(translateApiError(err))
     }
   }
 
@@ -332,7 +404,10 @@ function WaypointRow({
     <>
       <div
         onClick={open}
-        className="px-5 py-3.5 flex items-center gap-3.5 border-b border-line-soft last:border-b-0 hover:bg-paper cursor-pointer transition-colors"
+        className={cn(
+          'px-5 py-3.5 flex items-center gap-3.5 border-b border-line-soft last:border-b-0 hover:bg-paper cursor-pointer transition-colors',
+          isArchived && 'opacity-70'
+        )}
       >
         <MapPin
           size={18}
@@ -344,35 +419,59 @@ function WaypointRow({
           <button
             type="button"
             onClick={open}
-            className="block m-0 p-0 bg-transparent border-0 text-sm font-medium text-ink text-left cursor-pointer"
+            className={cn(
+              'block m-0 p-0 bg-transparent border-0 text-sm font-medium text-left cursor-pointer',
+              isArchived ? 'text-muted line-through' : 'text-ink'
+            )}
           >
             {waypoint.name}
           </button>
           {subtitle && <p className="m-0 mt-0.5 text-xs text-faint truncate">{subtitle}</p>}
         </div>
         <span className="text-[13px] text-muted tnum shrink-0">{waypoint.points} pts</span>
-        <Badge variant={waypoint.is_active ? 'success' : 'neutral'}>
-          {waypoint.is_active ? t.active : t.inactive}
-        </Badge>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            setConfirm(true)
-          }}
-          className={btnIconSmDanger}
-          aria-label={`${t.deactivate} ${waypoint.name}`}
-          title={t.deactivate}
-        >
-          <Trash2 size={15} strokeWidth={1.5} />
-        </button>
+        {isArchived ? (
+          <Badge variant="outline">{t.archived}</Badge>
+        ) : (
+          <Badge variant={waypoint.is_active ? 'success' : 'neutral'}>
+            {waypoint.is_active ? t.active : t.inactive}
+          </Badge>
+        )}
+        {isArchived ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              void bringBack()
+            }}
+            disabled={restore.isPending}
+            className={btnRowAction}
+            aria-label={`${t.restore} ${waypoint.name}`}
+            title={t.restore}
+          >
+            <RotateCcw size={14} strokeWidth={1.5} />
+            {t.restore}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              setConfirm(true)
+            }}
+            className={btnIconSmDanger}
+            aria-label={`${t.delete} ${waypoint.name}`}
+            title={t.delete}
+          >
+            <Trash2 size={15} strokeWidth={1.5} />
+          </button>
+        )}
         <ChevronRight size={18} strokeWidth={1.5} className="text-faint shrink-0" aria-hidden />
       </div>
       <ConfirmDialog
         open={confirm}
-        title={t.deactivate}
+        title={t.delete}
         message={t.deleteWaypointConfirm(waypoint.name)}
-        confirmLabel={t.deactivate}
+        confirmLabel={t.delete}
         onConfirm={remove}
         onCancel={() => setConfirm(false)}
         loading={del.isPending}

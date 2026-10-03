@@ -1,5 +1,5 @@
 import { useAuthStore } from './store'
-import { apiClient } from '../api/client'
+import { apiClient, ApiClientError } from '../api/client'
 import {
   ADMIN_ROLES,
   type LoginResponse,
@@ -31,10 +31,20 @@ export function useAuth() {
   const { accessToken, role, userId, forceReset, clearSession } = useAuthStore()
 
   async function login(email: string, password: string): Promise<LoginResult> {
-    const data = await apiClient.post<LoginResponse>('/api/v1/auth/login', {
-      email,
-      password,
-    })
+    // Admin scope: panel roles get the MFA challenge, players a 403 NOT_ADMIN
+    // (the same account can still play from the player app with a "player"
+    // session — that session never reaches /admin/*).
+    let data: LoginResponse
+    try {
+      data = await apiClient.post<LoginResponse>('/api/v1/auth/login', {
+        email,
+        password,
+        scope: 'admin',
+      })
+    } catch (err) {
+      if (err instanceof ApiClientError && err.code === 'NOT_ADMIN') throw new Error(t.roleError)
+      throw err
+    }
     if (data.mfa && data.mfa_token) {
       return { kind: 'mfa', challenge: { mfa: data.mfa, mfaToken: data.mfa_token } }
     }
